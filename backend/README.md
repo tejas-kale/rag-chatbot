@@ -6,7 +6,7 @@ This directory contains the backend code for the RAG chatbot, built with Flask.
 
 1. Install dependencies:
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 2. (Optional) Create a `.env` file for environment variables:
@@ -17,7 +17,7 @@ cp .env.example .env
 
 3. Run the application:
 ```bash
-python app.py
+uv run python app.py
 ```
 
 The API will be available at `http://127.0.0.1:5000`
