@@ -1,0 +1,1 @@
+RAG chatbot app in fulfilment of the LLM Zoomcamp project.
