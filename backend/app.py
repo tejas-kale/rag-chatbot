@@ -6,6 +6,7 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import config
+from models import init_db
 
 
 def create_app(config_name=None):
@@ -26,6 +27,9 @@ def create_app(config_name=None):
     
     # Configure CORS
     CORS(app, origins=app.config['CORS_ORIGINS'])
+    
+    # Initialize database
+    init_db(app)
     
     # Register routes
     @app.route('/')

@@ -18,6 +18,10 @@ build/
 .mypy_cache/
 .tox/
 
+# Database files
+*.db
+instance/
+
 # Node.js
 node_modules/
 dist/
