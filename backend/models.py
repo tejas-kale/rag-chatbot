@@ -33,9 +33,9 @@ class UserSettings(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    chat_sessions = db.relationship('ChatHistory', backref='user_settings', lazy=True)
-    data_sources = db.relationship('DataSource', backref='user_settings', lazy=True)
-    transcriptions = db.relationship('Transcription', backref='user_settings', lazy=True)
+    chat_sessions = db.relationship('ChatHistory', backref=__tablename__, lazy=True)
+    data_sources = db.relationship('DataSource', backref=__tablename__, lazy=True)
+    transcriptions = db.relationship('Transcription', backref=__tablename__, lazy=True)
     
     def __repr__(self):
         return f'<UserSettings {self.user_id}>'
@@ -74,7 +74,7 @@ class ChatHistory(db.Model):
     context_sources = db.Column(Text, nullable=True)  # JSON string of sources used for RAG
     
     # Relationship to transcriptions (if transcription is used in chat)
-    transcription = db.relationship('Transcription', backref='chat_history', uselist=False, lazy=True)
+    transcription = db.relationship('Transcription', backref=__tablename__, uselist=False, lazy=True)
     
     def __repr__(self):
         return f'<ChatHistory {self.session_id}: {self.user_message[:50]}...>'
