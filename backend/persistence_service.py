@@ -3,10 +3,14 @@ Persistence service for the RAG chatbot application.
 Provides a clean interface for all database operations (CRUD) for all models.
 """
 
+import logging
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 from models import db, UserSettings, ChatHistory, DataSource, Transcription
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class PersistenceManager:
@@ -18,7 +22,10 @@ class PersistenceManager:
 
     # UserSettings CRUD operations
     def create_user_settings(
-        self, user_id: str = "default_user", api_keys: bytes = None, custom_prompts: str = None
+        self,
+        user_id: str = "default_user",
+        api_keys: bytes = None,
+        custom_prompts: str = None,
     ) -> Optional[UserSettings]:
         """
         Create a new user settings record.
@@ -40,7 +47,7 @@ class PersistenceManager:
             return user_settings
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error creating user settings: {e}")
+            logger.error(f"Error creating user settings: {e}")
             return None
 
     def get_user_settings_by_id(self, settings_id: int) -> Optional[UserSettings]:
@@ -48,7 +55,7 @@ class PersistenceManager:
         try:
             return UserSettings.query.get(settings_id)
         except SQLAlchemyError as e:
-            print(f"Error retrieving user settings by ID: {e}")
+            logger.error(f"Error retrieving user settings by ID: {e}")
             return None
 
     def get_user_settings_by_user_id(self, user_id: str) -> Optional[UserSettings]:
@@ -56,10 +63,12 @@ class PersistenceManager:
         try:
             return UserSettings.query.filter_by(user_id=user_id).first()
         except SQLAlchemyError as e:
-            print(f"Error retrieving user settings by user ID: {e}")
+            logger.error(f"Error retrieving user settings by user ID: {e}")
             return None
 
-    def update_user_settings(self, settings_id: int, **kwargs) -> Optional[UserSettings]:
+    def update_user_settings(
+        self, settings_id: int, **kwargs
+    ) -> Optional[UserSettings]:
         """
         Update user settings.
 
@@ -75,7 +84,12 @@ class PersistenceManager:
             if not user_settings:
                 return None
 
+            # Validate kwargs - only allow valid model attributes
+            valid_attributes = {"user_id", "api_keys", "custom_prompts"}
             for key, value in kwargs.items():
+                if key not in valid_attributes:
+                    logger.warning(f"Invalid attribute '{key}' in kwargs, skipping")
+                    continue
                 if hasattr(user_settings, key):
                     setattr(user_settings, key, value)
 
@@ -84,7 +98,7 @@ class PersistenceManager:
             return user_settings
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error updating user settings: {e}")
+            logger.error(f"Error updating user settings: {e}")
             return None
 
     def delete_user_settings(self, settings_id: int) -> bool:
@@ -99,7 +113,7 @@ class PersistenceManager:
             return True
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error deleting user settings: {e}")
+            logger.error(f"Error deleting user settings: {e}")
             return False
 
     # ChatHistory CRUD operations
@@ -137,7 +151,7 @@ class PersistenceManager:
             return chat_history
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error creating chat history: {e}")
+            logger.error(f"Error creating chat history: {e}")
             return None
 
     def get_chat_history_by_id(self, chat_id: int) -> Optional[ChatHistory]:
@@ -145,10 +159,12 @@ class PersistenceManager:
         try:
             return ChatHistory.query.get(chat_id)
         except SQLAlchemyError as e:
-            print(f"Error retrieving chat history by ID: {e}")
+            logger.error(f"Error retrieving chat history by ID: {e}")
             return None
 
-    def get_chat_history_by_session(self, session_id: str, limit: int = 100) -> List[ChatHistory]:
+    def get_chat_history_by_session(
+        self, session_id: str, limit: int = 100
+    ) -> List[ChatHistory]:
         """Get chat history for a specific session."""
         try:
             return (
@@ -158,7 +174,7 @@ class PersistenceManager:
                 .all()
             )
         except SQLAlchemyError as e:
-            print(f"Error retrieving chat history by session: {e}")
+            logger.error(f"Error retrieving chat history by session: {e}")
             return []
 
     def update_chat_history(self, chat_id: int, **kwargs) -> Optional[ChatHistory]:
@@ -177,7 +193,18 @@ class PersistenceManager:
             if not chat_history:
                 return None
 
+            # Validate kwargs - only allow valid model attributes (excluding timestamp)
+            valid_attributes = {
+                "session_id",
+                "user_message",
+                "bot_response",
+                "user_settings_id",
+                "context_sources",
+            }
             for key, value in kwargs.items():
+                if key not in valid_attributes:
+                    logger.warning(f"Invalid attribute '{key}' in kwargs, skipping")
+                    continue
                 if hasattr(chat_history, key):
                     setattr(chat_history, key, value)
 
@@ -185,7 +212,7 @@ class PersistenceManager:
             return chat_history
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error updating chat history: {e}")
+            logger.error(f"Error updating chat history: {e}")
             return None
 
     def delete_chat_history(self, chat_id: int) -> bool:
@@ -200,20 +227,22 @@ class PersistenceManager:
             return True
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error deleting chat history: {e}")
+            logger.error(f"Error deleting chat history: {e}")
             return False
 
     def delete_chat_session(self, session_id: str) -> bool:
         """Delete all chat history for a specific session."""
         try:
-            chat_records = ChatHistory.query.filter_by(session_id=session_id).all()
-            for record in chat_records:
-                db.session.delete(record)
+            # Use bulk delete for better performance
+            deleted_count = ChatHistory.query.filter_by(session_id=session_id).delete()
             db.session.commit()
+            logger.info(
+                f"Deleted {deleted_count} chat records for session {session_id}"
+            )
             return True
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error deleting chat session: {e}")
+            logger.error(f"Error deleting chat session: {e}")
             return False
 
     # DataSource CRUD operations
@@ -254,7 +283,7 @@ class PersistenceManager:
             return data_source
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error creating data source: {e}")
+            logger.error(f"Error creating data source: {e}")
             return None
 
     def get_data_source_by_id(self, source_id: int) -> Optional[DataSource]:
@@ -262,7 +291,7 @@ class PersistenceManager:
         try:
             return DataSource.query.get(source_id)
         except SQLAlchemyError as e:
-            print(f"Error retrieving data source by ID: {e}")
+            logger.error(f"Error retrieving data source by ID: {e}")
             return None
 
     def get_data_sources_by_type(self, source_type: str) -> List[DataSource]:
@@ -270,7 +299,7 @@ class PersistenceManager:
         try:
             return DataSource.query.filter_by(source_type=source_type).all()
         except SQLAlchemyError as e:
-            print(f"Error retrieving data sources by type: {e}")
+            logger.error(f"Error retrieving data sources by type: {e}")
             return []
 
     def get_data_sources_by_status(self, status: str) -> List[DataSource]:
@@ -278,7 +307,7 @@ class PersistenceManager:
         try:
             return DataSource.query.filter_by(status=status).all()
         except SQLAlchemyError as e:
-            print(f"Error retrieving data sources by status: {e}")
+            logger.error(f"Error retrieving data sources by status: {e}")
             return []
 
     def update_data_source(self, source_id: int, **kwargs) -> Optional[DataSource]:
@@ -297,7 +326,21 @@ class PersistenceManager:
             if not data_source:
                 return None
 
+            # Validate kwargs - only allow valid model attributes (excluding auto-managed fields)
+            valid_attributes = {
+                "source_type",
+                "source_path",
+                "display_name",
+                "file_size",
+                "content_hash",
+                "status",
+                "error_message",
+                "user_settings_id",
+            }
             for key, value in kwargs.items():
+                if key not in valid_attributes:
+                    logger.warning(f"Invalid attribute '{key}' in kwargs, skipping")
+                    continue
                 if hasattr(data_source, key):
                     setattr(data_source, key, value)
 
@@ -309,7 +352,7 @@ class PersistenceManager:
             return data_source
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error updating data source: {e}")
+            logger.error(f"Error updating data source: {e}")
             return None
 
     def delete_data_source(self, source_id: int) -> bool:
@@ -324,7 +367,7 @@ class PersistenceManager:
             return True
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error deleting data source: {e}")
+            logger.error(f"Error deleting data source: {e}")
             return False
 
     # Transcription CRUD operations
@@ -362,7 +405,7 @@ class PersistenceManager:
             return transcription
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error creating transcription: {e}")
+            logger.error(f"Error creating transcription: {e}")
             return None
 
     def get_transcription_by_id(self, transcription_id: int) -> Optional[Transcription]:
@@ -370,7 +413,7 @@ class PersistenceManager:
         try:
             return Transcription.query.get(transcription_id)
         except SQLAlchemyError as e:
-            print(f"Error retrieving transcription by ID: {e}")
+            logger.error(f"Error retrieving transcription by ID: {e}")
             return None
 
     def get_transcriptions_by_status(self, status: str) -> List[Transcription]:
@@ -378,10 +421,12 @@ class PersistenceManager:
         try:
             return Transcription.query.filter_by(status=status).all()
         except SQLAlchemyError as e:
-            print(f"Error retrieving transcriptions by status: {e}")
+            logger.error(f"Error retrieving transcriptions by status: {e}")
             return []
 
-    def update_transcription(self, transcription_id: int, **kwargs) -> Optional[Transcription]:
+    def update_transcription(
+        self, transcription_id: int, **kwargs
+    ) -> Optional[Transcription]:
         """
         Update transcription record.
 
@@ -397,7 +442,24 @@ class PersistenceManager:
             if not transcription:
                 return None
 
+            # Validate kwargs - only allow valid model attributes (excluding auto-managed fields)
+            valid_attributes = {
+                "youtube_url",
+                "original_filename",
+                "video_duration",
+                "transcription_text",
+                "confidence_score",
+                "transcription_engine",
+                "processing_duration",
+                "status",
+                "error_message",
+                "user_settings_id",
+                "chat_history_id",
+            }
             for key, value in kwargs.items():
+                if key not in valid_attributes:
+                    logger.warning(f"Invalid attribute '{key}' in kwargs, skipping")
+                    continue
                 if hasattr(transcription, key):
                     setattr(transcription, key, value)
 
@@ -409,7 +471,7 @@ class PersistenceManager:
             return transcription
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error updating transcription: {e}")
+            logger.error(f"Error updating transcription: {e}")
             return None
 
     def delete_transcription(self, transcription_id: int) -> bool:
@@ -424,7 +486,7 @@ class PersistenceManager:
             return True
         except SQLAlchemyError as e:
             db.session.rollback()
-            print(f"Error deleting transcription: {e}")
+            logger.error(f"Error deleting transcription: {e}")
             return False
 
     # Utility methods
@@ -433,15 +495,19 @@ class PersistenceManager:
         try:
             return UserSettings.query.all()
         except SQLAlchemyError as e:
-            print(f"Error retrieving all user settings: {e}")
+            logger.error(f"Error retrieving all user settings: {e}")
             return []
 
     def get_recent_chat_history(self, limit: int = 50) -> List[ChatHistory]:
         """Get recent chat history across all sessions."""
         try:
-            return ChatHistory.query.order_by(ChatHistory.timestamp.desc()).limit(limit).all()
+            return (
+                ChatHistory.query.order_by(ChatHistory.timestamp.desc())
+                .limit(limit)
+                .all()
+            )
         except SQLAlchemyError as e:
-            print(f"Error retrieving recent chat history: {e}")
+            logger.error(f"Error retrieving recent chat history: {e}")
             return []
 
     def get_all_data_sources(self) -> List[DataSource]:
@@ -449,7 +515,7 @@ class PersistenceManager:
         try:
             return DataSource.query.all()
         except SQLAlchemyError as e:
-            print(f"Error retrieving all data sources: {e}")
+            logger.error(f"Error retrieving all data sources: {e}")
             return []
 
     def get_all_transcriptions(self) -> List[Transcription]:
@@ -457,5 +523,5 @@ class PersistenceManager:
         try:
             return Transcription.query.all()
         except SQLAlchemyError as e:
-            print(f"Error retrieving all transcriptions: {e}")
+            logger.error(f"Error retrieving all transcriptions: {e}")
             return []
