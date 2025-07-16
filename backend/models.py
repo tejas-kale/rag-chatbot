@@ -34,8 +34,8 @@ class UserSettings(db.Model):
     
     # Relationships
     chat_sessions = db.relationship('ChatHistory', backref='user_settings', lazy=True)
-    data_sources = db.relationship('DataSources', backref='user_settings', lazy=True)
-    transcriptions = db.relationship('Transcriptions', backref='user_settings', lazy=True)
+    data_sources = db.relationship('DataSource', backref='user_settings', lazy=True)
+    transcriptions = db.relationship('Transcription', backref='user_settings', lazy=True)
     
     def __repr__(self):
         return f'<UserSettings {self.user_id}>'
@@ -46,6 +46,16 @@ class ChatHistory(db.Model):
     Model for storing chat conversation history.
     
     Covers requirement FR4.1 (chat conversation history).
+    
+    Sample row:
+    {
+        "id": 1,
+        "session_id": "session_123",
+        "user_message": "What is machine learning?",
+        "bot_response": "Machine learning is a subset of AI...",
+        "timestamp": "2024-01-15 10:30:00",
+        "context_sources": "[{'source': 'ml_basics.pdf', 'score': 0.95}]"
+    }
     """
     __tablename__ = 'chat_history'
     
@@ -63,11 +73,14 @@ class ChatHistory(db.Model):
     # Additional context information
     context_sources = db.Column(Text, nullable=True)  # JSON string of sources used for RAG
     
+    # Relationship to transcriptions (if transcription is used in chat)
+    transcription = db.relationship('Transcription', backref='chat_history', uselist=False, lazy=True)
+    
     def __repr__(self):
         return f'<ChatHistory {self.session_id}: {self.user_message[:50]}...>'
 
 
-class DataSources(db.Model):
+class DataSource(db.Model):
     """
     Model for storing references to data sources.
     
@@ -98,10 +111,10 @@ class DataSources(db.Model):
     user_settings_id = db.Column(db.Integer, db.ForeignKey('user_settings.id'), nullable=True)
     
     def __repr__(self):
-        return f'<DataSources {self.source_type}: {self.display_name or self.source_path}>'
+        return f'<DataSource {self.source_type}: {self.display_name or self.source_path}>'
 
 
-class Transcriptions(db.Model):
+class Transcription(db.Model):
     """
     Model for storing audio transcription data.
     
@@ -111,10 +124,10 @@ class Transcriptions(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     
-    # Audio file information
-    audio_file_path = db.Column(db.String(500), nullable=False)
+    # YouTube URL (instead of persisting MP3 files)
+    youtube_url = db.Column(db.String(500), nullable=False)
     original_filename = db.Column(db.String(200), nullable=True)
-    file_size = db.Column(db.Integer, nullable=True)
+    video_duration = db.Column(db.Float, nullable=True)  # Duration in seconds
     
     # Transcription content
     transcription_text = db.Column(Text, nullable=True)
@@ -135,11 +148,11 @@ class Transcriptions(db.Model):
     # Foreign key to user settings
     user_settings_id = db.Column(db.Integer, db.ForeignKey('user_settings.id'), nullable=True)
     
-    # Relationship to chat history (if transcription is used in chat)
+    # Foreign key to chat history (if transcription is used in chat)
     chat_history_id = db.Column(db.Integer, db.ForeignKey('chat_history.id'), nullable=True)
     
     def __repr__(self):
-        return f'<Transcriptions {self.original_filename}: {self.status}>'
+        return f'<Transcription {self.original_filename}: {self.status}>'
 
 
 def init_db(app):
@@ -152,8 +165,11 @@ def init_db(app):
     db.init_app(app)
     
     with app.app_context():
+        print("Initializing database...")
+        
         # Create all tables
         db.create_all()
+        print("✅ Database tables created")
         
         # Create default user settings if not exists
         default_user = UserSettings.query.filter_by(user_id='default_user').first()
@@ -161,3 +177,13 @@ def init_db(app):
             default_user = UserSettings(user_id='default_user')
             db.session.add(default_user)
             db.session.commit()
+            print("✅ Default user settings created")
+        else:
+            print("✅ Default user settings already exist")
+        
+        # Print summary
+        print(f"\nDatabase initialization complete!")
+        print(f"Database location: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        print(f"Tables created: {len(db.metadata.tables)} tables")
+        for table_name in db.metadata.tables.keys():
+            print(f"  - {table_name}")
