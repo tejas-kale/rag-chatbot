@@ -27,6 +27,9 @@ class Config:
     # Database configuration
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///rag_chatbot.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Encryption configuration
+    ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
 
 
 class DevelopmentConfig(Config):
@@ -43,6 +46,7 @@ class TestingConfig(Config):
     """Testing configuration."""
     TESTING = True
     DEBUG = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
 
 # Configuration dictionary

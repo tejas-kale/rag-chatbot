@@ -4,10 +4,13 @@ Provides a clean interface for all database operations (CRUD) for all models.
 """
 
 import logging
-from typing import List, Optional
+import json
+from typing import List, Optional, Dict, Any
 from datetime import datetime
+from cryptography.fernet import Fernet
 from sqlalchemy.exc import SQLAlchemyError
 from models import db, UserSettings, ChatHistory, DataSource, Transcription
+from flask import current_app
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -20,11 +23,97 @@ class PersistenceManager:
     Provides CRUD operations for all models with proper session management.
     """
 
+    def __init__(self):
+        """Initialize the PersistenceManager."""
+        self._fernet = None
+
+    def _get_fernet(self) -> Optional[Fernet]:
+        """
+        Get or create Fernet instance for encryption/decryption.
+
+        Returns:
+            Fernet instance if encryption key is available, None otherwise
+        """
+        if self._fernet is None:
+            encryption_key = current_app.config.get("ENCRYPTION_KEY")
+            if encryption_key:
+                try:
+                    # If the key is a string, encode it to bytes
+                    if isinstance(encryption_key, str):
+                        encryption_key = encryption_key.encode()
+                    self._fernet = Fernet(encryption_key)
+                except Exception as e:
+                    logger.error(f"Failed to initialize Fernet with provided key: {e}")
+                    return None
+            else:
+                logger.warning(
+                    "No encryption key provided in ENCRYPTION_KEY environment variable"
+                )
+                return None
+        return self._fernet
+
+    def encrypt_key(self, data: Dict[str, Any]) -> Optional[bytes]:
+        """
+        Encrypt API keys data for secure storage.
+
+        Args:
+            data: Dictionary containing API keys to encrypt
+
+        Returns:
+            Encrypted bytes if successful, None if encryption fails
+        """
+        if not data:
+            return None
+
+        fernet = self._get_fernet()
+        if not fernet:
+            logger.error("Cannot encrypt data: Fernet instance not available")
+            return None
+
+        try:
+            # Convert dict to JSON string, then to bytes
+            json_data = json.dumps(data).encode("utf-8")
+            encrypted_data = fernet.encrypt(json_data)
+            logger.debug("API keys encrypted successfully")
+            return encrypted_data
+        except Exception as e:
+            logger.error(f"Failed to encrypt API keys: {e}")
+            return None
+
+    def decrypt_key(self, encrypted_data: bytes) -> Optional[Dict[str, Any]]:
+        """
+        Decrypt API keys data from storage.
+
+        Args:
+            encrypted_data: Encrypted bytes to decrypt
+
+        Returns:
+            Decrypted dictionary if successful, None if decryption fails
+        """
+        if not encrypted_data:
+            return None
+
+        fernet = self._get_fernet()
+        if not fernet:
+            logger.error("Cannot decrypt data: Fernet instance not available")
+            return None
+
+        try:
+            # Decrypt bytes to JSON string, then parse to dict
+            decrypted_bytes = fernet.decrypt(encrypted_data)
+            json_data = decrypted_bytes.decode("utf-8")
+            data = json.loads(json_data)
+            logger.debug("API keys decrypted successfully")
+            return data
+        except Exception as e:
+            logger.error(f"Failed to decrypt API keys: {e}")
+            return None
+
     # UserSettings CRUD operations
     def create_user_settings(
         self,
         user_id: str = "default_user",
-        api_keys: bytes = None,
+        api_keys: Dict[str, Any] = None,
         custom_prompts: str = None,
     ) -> Optional[UserSettings]:
         """
@@ -32,15 +121,27 @@ class PersistenceManager:
 
         Args:
             user_id: User identifier
-            api_keys: Encrypted API keys (binary data)
+            api_keys: Dictionary of API keys to encrypt and store
             custom_prompts: JSON string of custom prompts
 
         Returns:
             UserSettings object if successful, None if failed
         """
         try:
+            # Encrypt API keys if provided
+            encrypted_api_keys = None
+            if api_keys:
+                encrypted_api_keys = self.encrypt_key(api_keys)
+                if encrypted_api_keys is None:
+                    logger.error(
+                        "Failed to encrypt API keys during user settings creation"
+                    )
+                    return None
+
             user_settings = UserSettings(
-                user_id=user_id, api_keys=api_keys, custom_prompts=custom_prompts
+                user_id=user_id,
+                api_keys=encrypted_api_keys,
+                custom_prompts=custom_prompts,
             )
             db.session.add(user_settings)
             db.session.commit()
@@ -66,6 +167,62 @@ class PersistenceManager:
             logger.error(f"Error retrieving user settings by user ID: {e}")
             return None
 
+    def get_api_keys(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get decrypted API keys for a user.
+
+        Args:
+            user_id: User identifier
+
+        Returns:
+            Decrypted API keys dictionary if successful, None if failed
+        """
+        try:
+            user_settings = self.get_user_settings_by_user_id(user_id)
+            if not user_settings or not user_settings.api_keys:
+                return None
+
+            return self.decrypt_key(user_settings.api_keys)
+        except Exception as e:
+            logger.error(f"Error getting API keys for user {user_id}: {e}")
+            return None
+
+    def set_api_keys(self, user_id: str, api_keys: Dict[str, Any]) -> bool:
+        """
+        Set encrypted API keys for a user.
+
+        Args:
+            user_id: User identifier
+            api_keys: Dictionary of API keys to encrypt and store
+
+        Returns:
+            True if successful, False if failed
+        """
+        try:
+            user_settings = self.get_user_settings_by_user_id(user_id)
+            if not user_settings:
+                # Create new user settings if doesn't exist
+                user_settings = self.create_user_settings(
+                    user_id=user_id, api_keys=api_keys
+                )
+                return user_settings is not None
+
+            # Encrypt the new API keys
+            encrypted_api_keys = self.encrypt_key(api_keys)
+            if encrypted_api_keys is None:
+                logger.error("Failed to encrypt API keys during update")
+                return False
+
+            # Update existing user settings
+            user_settings.api_keys = encrypted_api_keys
+            user_settings.updated_at = datetime.utcnow()
+            db.session.commit()
+            return True
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            logger.error(f"Error setting API keys for user {user_id}: {e}")
+            return False
+
     def update_user_settings(
         self, settings_id: int, **kwargs
     ) -> Optional[UserSettings]:
@@ -75,6 +232,8 @@ class PersistenceManager:
         Args:
             settings_id: ID of the user settings to update
             **kwargs: Fields to update (api_keys, custom_prompts, etc.)
+                     Note: api_keys should be provided as a dict,
+                     will be encrypted automatically
 
         Returns:
             Updated UserSettings object if successful, None if failed
@@ -90,6 +249,15 @@ class PersistenceManager:
                 if key not in valid_attributes:
                     logger.warning(f"Invalid attribute '{key}' in kwargs, skipping")
                     continue
+
+                if key == "api_keys" and value is not None:
+                    # Encrypt API keys if provided
+                    encrypted_value = self.encrypt_key(value)
+                    if encrypted_value is None:
+                        logger.error("Failed to encrypt API keys during update")
+                        return None
+                    value = encrypted_value
+
                 if hasattr(user_settings, key):
                     setattr(user_settings, key, value)
 
@@ -326,7 +494,8 @@ class PersistenceManager:
             if not data_source:
                 return None
 
-            # Validate kwargs - only allow valid model attributes (excluding auto-managed fields)
+            # Validate kwargs - only allow valid model attributes
+            # (excluding auto-managed fields)
             valid_attributes = {
                 "source_type",
                 "source_path",
@@ -442,7 +611,8 @@ class PersistenceManager:
             if not transcription:
                 return None
 
-            # Validate kwargs - only allow valid model attributes (excluding auto-managed fields)
+            # Validate kwargs - only allow valid model attributes
+            # (excluding auto-managed fields)
             valid_attributes = {
                 "youtube_url",
                 "original_filename",
