@@ -22,6 +22,10 @@ build/
 *.db
 instance/
 
+# ChromaDB data directory
+db/
+chroma_data/
+
 # Node.js
 node_modules/
 dist/

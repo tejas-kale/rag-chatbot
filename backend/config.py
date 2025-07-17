@@ -30,6 +30,9 @@ class Config:
     
     # Encryption configuration
     ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY')
+    
+    # ChromaDB configuration
+    CHROMADB_PERSIST_PATH = os.environ.get('CHROMADB_PERSIST_PATH', 'db/chroma')
 
 
 class DevelopmentConfig(Config):
