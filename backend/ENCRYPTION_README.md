@@ -96,6 +96,45 @@ CREATE TABLE user_settings (
 - **Never commit keys** to version control
 - **Rotate keys periodically** and update encrypted data accordingly
 
+### Key Rotation Process
+When rotating encryption keys, follow these steps to ensure data continuity:
+
+1. **Prepare for rotation:**
+   ```bash
+   # Generate new encryption key
+   python generate_encryption_key.py
+   ```
+
+2. **Create a migration script** to re-encrypt existing data:
+   ```python
+   # Example migration script
+   from persistence_service import PersistenceManager
+   from cryptography.fernet import Fernet
+   
+   # Initialize with old key
+   old_key = "your-old-encryption-key"
+   old_fernet = Fernet(old_key.encode())
+   
+   # Initialize with new key  
+   new_key = "your-new-encryption-key"
+   new_fernet = Fernet(new_key.encode())
+   
+   # Re-encrypt all user API keys
+   pm = PersistenceManager()
+   for user_settings in pm.get_all_user_settings():
+       if user_settings.api_keys:
+           # Decrypt with old key
+           decrypted_data = old_fernet.decrypt(user_settings.api_keys)
+           # Re-encrypt with new key
+           user_settings.api_keys = new_fernet.encrypt(decrypted_data)
+   ```
+
+3. **Update environment variables** with the new key
+4. **Deploy the application** with the new key
+5. **Verify** all API keys are accessible after rotation
+
+**Important:** Keep the old key accessible during migration to decrypt existing data.
+
 ### Data Protection
 - Encrypted data cannot be decrypted without the correct key
 - If the encryption key is lost, encrypted API keys cannot be recovered

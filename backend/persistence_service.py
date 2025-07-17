@@ -203,9 +203,21 @@ class PersistenceManager:
             if not user_settings:
                 # Create new user settings if doesn't exist
                 user_settings = self.create_user_settings(
-                    user_id=user_id, api_keys=api_keys
+                    user_id=user_id, api_keys=None
                 )
-                return user_settings is not None
+                if user_settings is None:
+                    return False
+                
+                # Now encrypt and add the API keys
+                encrypted_api_keys = self.encrypt_key(api_keys)
+                if encrypted_api_keys is None:
+                    logger.error("Failed to encrypt API keys during user creation")
+                    return False
+                
+                user_settings.api_keys = encrypted_api_keys
+                user_settings.updated_at = datetime.utcnow()
+                db.session.commit()
+                return True
 
             # Encrypt the new API keys
             encrypted_api_keys = self.encrypt_key(api_keys)
