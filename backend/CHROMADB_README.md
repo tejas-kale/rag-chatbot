@@ -81,12 +81,24 @@ app = Flask(__name__)
 @app.route('/api/search', methods=['POST'])
 def search():
     data = request.json
+    # Example data structure:
+    # {
+    #     "query": "machine learning transformers",
+    #     "collection": "documents",
+    #     "n_results": 10,
+    #     "where": {"topic": "AI"}
+    # }
+    
     query = data.get('query')
+    collection_name = data.get('collection', 'documents')
+    n_results = data.get('n_results', 10)
+    where = data.get('where')
     
     results = chromadb_service.query_documents(
-        collection_name="documents",
+        collection_name=collection_name,
         query_texts=query,
-        n_results=10
+        n_results=n_results,
+        where=where
     )
     
     return jsonify(results)

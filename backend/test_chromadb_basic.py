@@ -5,6 +5,7 @@ This test doesn't require ChromaDB to be installed.
 
 import os
 import sys
+import traceback
 
 # Add the backend directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -58,7 +59,6 @@ def test_service_import():
                 
     except Exception as e:
         print(f"❌ Test failed: {e}")
-        import traceback
         traceback.print_exc()
         return False
 

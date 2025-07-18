@@ -7,6 +7,7 @@ import os
 import sys
 import tempfile
 import shutil
+import traceback
 from pathlib import Path
 
 # Add the backend directory to the Python path
@@ -110,7 +111,6 @@ def test_chromadb_service():
             
     except Exception as e:
         print(f"❌ Test failed: {e}")
-        import traceback
         traceback.print_exc()
         return False
     

@@ -5,6 +5,7 @@ Provides a clean interface for managing ChromaDB collections with local persiste
 
 import os
 import logging
+import uuid
 from typing import List, Optional, Dict, Any, Union
 from flask import current_app
 import chromadb
@@ -86,7 +87,7 @@ class ChromaDBService:
                     embedding_function=embedding_function
                 )
                 logger.info(f"Retrieved existing collection: {name}")
-            except Exception:
+            except ValueError:
                 # Collection doesn't exist, create it
                 collection = client.create_collection(
                     name=name,
@@ -168,7 +169,7 @@ class ChromaDBService:
             
             # Generate IDs if not provided
             if ids is None:
-                ids = [f"doc_{i}" for i in range(len(documents))]
+                ids = [f"doc_{uuid.uuid4().hex[:8]}_{i}" for i in range(len(documents))]
             
             collection.add(
                 documents=documents,
@@ -179,8 +180,11 @@ class ChromaDBService:
             
             logger.info(f"Added {len(documents)} documents to collection '{collection_name}'")
             return True
+        except ValueError as e:
+            logger.error(f"Invalid data format for collection '{collection_name}': {e}")
+            return False
         except Exception as e:
-            logger.error(f"Error adding documents to collection '{collection_name}': {e}")
+            logger.error(f"Unexpected error adding documents to collection '{collection_name}': {e}")
             return False
     
     def query_documents(

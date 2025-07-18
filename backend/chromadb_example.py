@@ -3,20 +3,30 @@ Example integration of ChromaDB service with Flask application.
 This file demonstrates how to use the ChromaDB service in the Flask app context.
 """
 
+import os
 from flask import Flask, jsonify, request
 from config import config
 from chromadb_service import chromadb_service
 
 
-def create_app_with_chromadb():
+def create_app_with_chromadb(config_name=None):
     """
     Create a Flask application with ChromaDB integration.
     
     This is an example of how to integrate the ChromaDB service
     with the existing Flask application.
+    
+    Args:
+        config_name (str): Configuration name ('development', 'production', 'testing')
+    
+    Returns:
+        Flask: Configured Flask application instance
     """
     app = Flask(__name__)
-    app.config.from_object(config['development'])
+    
+    # Determine configuration
+    config_name = config_name or os.environ.get('FLASK_ENV', 'development')
+    app.config.from_object(config[config_name])
     
     @app.route('/api/chromadb/collections', methods=['GET'])
     def list_collections():
