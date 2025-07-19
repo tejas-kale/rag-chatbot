@@ -33,6 +33,12 @@ class Config:
     
     # ChromaDB configuration
     CHROMADB_PERSIST_PATH = os.environ.get('CHROMADB_PERSIST_PATH', 'db/chroma')
+    
+    # Embedding configuration
+    EMBEDDING_PROVIDER = os.environ.get('EMBEDDING_PROVIDER', 'huggingface')
+    EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    HUGGINGFACE_API_TOKEN = os.environ.get('HUGGINGFACE_API_TOKEN')
 
 
 class DevelopmentConfig(Config):
