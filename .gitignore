@@ -18,6 +18,9 @@ build/
 .mypy_cache/
 .tox/
 
+# UV lock files
+backend/uv.lock
+
 # Database files
 *.db
 instance/

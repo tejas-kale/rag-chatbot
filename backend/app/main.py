@@ -12,44 +12,44 @@ from app.models.models import init_db
 def create_app(config_name=None):
     """
     Create and configure the Flask application.
-    
+
     Args:
         config_name (str): Configuration name ('development', 'production', 'testing')
-    
+
     Returns:
         Flask: Configured Flask application instance
     """
     app = Flask(__name__)
-    
+
     # Determine configuration
-    config_name = config_name or os.environ.get('FLASK_ENV', 'default')
+    config_name = config_name or os.environ.get("FLASK_ENV", "default")
     app.config.from_object(config[config_name])
-    
+
     # Configure CORS
-    CORS(app, origins=app.config['CORS_ORIGINS'])
-    
+    CORS(app, origins=app.config["CORS_ORIGINS"])
+
     # Initialize database
     init_db(app)
-    
+
     # Register routes
-    @app.route('/')
+    @app.route("/")
     def health_check():
         """Basic health check endpoint."""
-        return jsonify({
-            'message': 'RAG Chatbot API is running',
-            'status': 'healthy',
-            'version': '1.0.0'
-        })
-    
-    @app.route('/api/health')
+        return jsonify(
+            {
+                "message": "RAG Chatbot API is running",
+                "status": "healthy",
+                "version": "1.0.0",
+            }
+        )
+
+    @app.route("/api/health")
     def api_health():
         """API health check endpoint."""
-        return jsonify({
-            'api': 'RAG Chatbot API',
-            'status': 'healthy',
-            'environment': config_name
-        })
-    
+        return jsonify(
+            {"api": "RAG Chatbot API", "status": "healthy", "environment": config_name}
+        )
+
     return app
 
 
@@ -57,10 +57,6 @@ def create_app(config_name=None):
 app = create_app()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run the application
-    app.run(
-        host=app.config['HOST'],
-        port=app.config['PORT'],
-        debug=app.config['DEBUG']
-    )
+    app.run(host=app.config["HOST"], port=app.config["PORT"], debug=app.config["DEBUG"])
