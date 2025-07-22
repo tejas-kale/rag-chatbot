@@ -8,6 +8,7 @@ import os
 from typing import Any, Optional, Union
 
 from flask import current_app
+
 # LangChain imports - placed at top per code standards
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings

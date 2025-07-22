@@ -38,6 +38,11 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Handle exceptions gracefully with try-except blocks
 - **NEVER place imports inside try-except blocks** - all imports must be at the top of the file
 - Import external dependencies at module level to allow early detection of missing packages
+- **Code Formatting Requirements:**
+  - ALL Python code must be formatted with Black before committing
+  - ALL imports must be organized with isort before committing
+  - Follow PEP 8 standards and maintain consistent code style
+  - Run formatting tools after any code changes
 
 ### LangChain Integration
 - Use LangChain for building the RAG pipeline
@@ -105,6 +110,19 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Use pull requests for code review
 - Keep commits atomic and focused on single changes
 - Write descriptive commit messages
+
+### Code Formatting and Linting (REQUIRED)
+- **ALWAYS run Black formatter before committing any Python code changes**
+  - Command: `uv run black app/ tests/ scripts/`
+  - Ensure all code follows consistent formatting standards
+- **ALWAYS run isort import sorter before committing any Python code changes**
+  - Command: `uv run isort app/ tests/ scripts/`
+  - Maintain consistent import organization and ordering
+- **ALWAYS verify formatting compliance before committing**
+  - Check command: `uv run black --check --diff app/ tests/ scripts/`
+  - Check command: `uv run isort --check-only --diff app/ tests/ scripts/`
+- These tools are integrated into CI/CD pipeline and must pass for PR approval
+- Use the same commands that are used in GitHub Actions workflow
 
 ### Testing
 - Write unit tests for all business logic

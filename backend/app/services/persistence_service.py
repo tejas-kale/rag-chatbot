@@ -12,8 +12,7 @@ from cryptography.fernet import Fernet
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.models import (ChatHistory, DataSource, Transcription,
-                               UserSettings, db)
+from app.models.models import ChatHistory, DataSource, Transcription, UserSettings, db
 
 # Configure logger
 logger = logging.getLogger(__name__)
