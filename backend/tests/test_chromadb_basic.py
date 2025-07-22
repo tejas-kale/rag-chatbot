@@ -18,6 +18,7 @@ def test_service_import():
     try:
         # Test imports
         from flask import Flask
+
         from app.config.config import config
 
         print("✓ Flask and config imports successful")

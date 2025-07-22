@@ -4,8 +4,9 @@ Defines SQLAlchemy models for persistent data storage.
 """
 
 from datetime import datetime
+
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Text, LargeBinary
+from sqlalchemy import LargeBinary, Text
 
 # Initialize SQLAlchemy instance
 db = SQLAlchemy()

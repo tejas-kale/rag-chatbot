@@ -8,10 +8,10 @@ Usage:
     python verify_chromadb.py
 """
 
-import sys
 import os
-import tempfile
 import shutil
+import sys
+import tempfile
 import traceback
 from pathlib import Path
 

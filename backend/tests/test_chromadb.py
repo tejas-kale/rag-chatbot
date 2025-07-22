@@ -4,9 +4,9 @@ This script tests the basic functionality of the ChromaDB service.
 """
 
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 import traceback
 from pathlib import Path
 
@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask
+
 from app.config.config import config
 from app.services.chromadb_service import ChromaDBService
 

@@ -5,19 +5,19 @@ This script tests the embedding factory and model creation.
 
 import os
 import sys
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # Add the backend directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask
+
 from app.config.config import config
-from app.services.embedding_service import (
-    EmbeddingFactory,
-    get_default_embedding_model,
-    create_embedding_function,
-)
+from app.services.embedding_service import (EmbeddingFactory,
+                                            create_embedding_function,
+                                            get_default_embedding_model)
 
 
 class TestEmbeddingFactory:

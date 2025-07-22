@@ -4,7 +4,9 @@ This file demonstrates how to use the ChromaDB service in the Flask app context.
 """
 
 import os
+
 from flask import Flask, jsonify, request
+
 from app.config.config import config
 from app.services.chromadb_service import chromadb_service
 

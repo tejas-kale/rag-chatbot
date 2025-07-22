@@ -3,11 +3,11 @@ Embedding model factory for the RAG chatbot application.
 Provides configurable embedding models for different providers.
 """
 
-import os
 import logging
-from typing import Optional, Union, Any
-from flask import current_app
+import os
+from typing import Any, Optional, Union
 
+from flask import current_app
 # LangChain imports - placed at top per code standards
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings

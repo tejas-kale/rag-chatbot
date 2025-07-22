@@ -3,14 +3,15 @@ ChromaDB service for the RAG chatbot application.
 Provides a clean interface for managing ChromaDB collections with local persistence.
 """
 
-import os
 import logging
+import os
 import uuid
-from typing import List, Optional, Dict, Any, Union
-from flask import current_app
+from typing import Any, Dict, List, Optional, Union
+
 import chromadb
 from chromadb import Collection
 from chromadb.config import Settings
+from flask import current_app
 
 # Configure logger
 logger = logging.getLogger(__name__)

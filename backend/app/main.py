@@ -3,8 +3,10 @@ Main Flask application for the RAG chatbot.
 """
 
 import os
+
 from flask import Flask, jsonify
 from flask_cors import CORS
+
 from app.config.config import config
 from app.models.models import init_db
 

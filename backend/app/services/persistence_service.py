@@ -3,14 +3,17 @@ Persistence service for the RAG chatbot application.
 Provides a clean interface for all database operations (CRUD) for all models.
 """
 
-import logging
 import json
-from typing import List, Optional, Dict, Any
+import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from cryptography.fernet import Fernet
-from sqlalchemy.exc import SQLAlchemyError
-from app.models.models import db, UserSettings, ChatHistory, DataSource, Transcription
 from flask import current_app
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.models.models import (ChatHistory, DataSource, Transcription,
+                               UserSettings, db)
 
 # Configure logger
 logger = logging.getLogger(__name__)
