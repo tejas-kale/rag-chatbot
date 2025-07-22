@@ -19,27 +19,30 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    
-    - name: Cache pip packages
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Cache uv packages
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('backend/pyproject.toml') }}
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-${{ matrix.python-version }}-${{ hashFiles('backend/pyproject.toml', 'backend/uv.lock') }}
         restore-keys: |
-          ${{ runner.os }}-pip-${{ matrix.python-version }}-
-          ${{ runner.os }}-pip-
-    
+          ${{ runner.os }}-uv-${{ matrix.python-version }}-
+          ${{ runner.os }}-uv-
+
     - name: Install dependencies
       run: |
         cd backend
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov flask python-dotenv flask-cors flask-sqlalchemy cryptography
-        # Install basic dependencies without LangChain for now
+        uv sync --dev
     
     - name: Create test environment file
       run: |
@@ -52,7 +55,7 @@ jobs:
     - name: Run unit tests
       run: |
         cd backend
-        python -m pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
+        uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term-missing
       env:
         FLASK_ENV: testing
         EMBEDDING_PROVIDER: huggingface
@@ -61,7 +64,7 @@ jobs:
     - name: Run validation scripts
       run: |
         cd backend
-        python scripts/validate_embeddings.py
+        uv run python scripts/validate_embeddings.py
       env:
         FLASK_ENV: testing
     
@@ -76,7 +79,7 @@ jobs:
     - name: Test application startup
       run: |
         cd backend
-        timeout 10s python -c "
+        timeout 10s uv run python -c "
         from app.main import create_app
         app = create_app('testing')
         print('✅ Application startup successful')
@@ -89,28 +92,33 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
-    - name: Install linting tools
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install black flake8 isort
+        cd backend
+        uv sync --dev
     
     - name: Run Black code formatter
       run: |
         cd backend
-        black --check --diff app/ tests/ scripts/
-    
+        uv run black --check --diff app/ tests/ scripts/
+
     - name: Run isort import sorter
       run: |
         cd backend
-        isort --check-only --diff app/ tests/ scripts/
-    
+        uv run isort --check-only --diff app/ tests/ scripts/
+
     - name: Run Flake8 linter
       run: |
         cd backend
-        flake8 app/ tests/ scripts/ --max-line-length=88 --extend-ignore=E203,W503
+        uv run flake8 app/ tests/ scripts/ --max-line-length=88 --extend-ignore=E203,W503
