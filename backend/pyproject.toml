@@ -16,7 +16,7 @@ dependencies = [
     "langchain-huggingface>=0.0.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-cov",
