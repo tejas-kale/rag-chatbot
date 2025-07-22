@@ -42,6 +42,7 @@ jobs:
     - name: Install dependencies
       run: |
         cd backend
+        uv lock --upgrade
         uv sync --dev
     
     - name: Create test environment file
