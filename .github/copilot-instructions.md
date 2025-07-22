@@ -36,6 +36,8 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Follow Python naming conventions (snake_case)
 - Use list comprehensions and generator expressions appropriately
 - Handle exceptions gracefully with try-except blocks
+- **NEVER place imports inside try-except blocks** - all imports must be at the top of the file
+- Import external dependencies at module level to allow early detection of missing packages
 
 ### LangChain Integration
 - Use LangChain for building the RAG pipeline

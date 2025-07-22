@@ -12,8 +12,8 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask
-from config import config
-from embeddings import EmbeddingFactory, get_default_embedding_model, create_embedding_function
+from app.config.config import config
+from app.services.embedding_service import EmbeddingFactory, get_default_embedding_model, create_embedding_function
 
 
 class TestEmbeddingFactory:
@@ -48,7 +48,7 @@ class TestEmbeddingFactory:
             
             assert "Unsupported embedding provider" in str(exc_info.value)
     
-    @patch('embeddings.HuggingFaceEmbeddings')
+    @patch('app.services.embedding_service.HuggingFaceEmbeddings')
     def test_create_huggingface_embedding_success(self, mock_hf_embeddings):
         """Test successful creation of HuggingFace embedding model."""
         with self.app.app_context():
@@ -69,7 +69,7 @@ class TestEmbeddingFactory:
                 model_kwargs={'use_auth_token': 'test-hf-token'}
             )
     
-    @patch('embeddings.OpenAIEmbeddings')
+    @patch('app.services.embedding_service.OpenAIEmbeddings')
     def test_create_openai_embedding_success(self, mock_openai_embeddings):
         """Test successful creation of OpenAI embedding model."""
         with self.app.app_context():
@@ -100,13 +100,13 @@ class TestEmbeddingFactory:
         
         with app.app_context():
             # Patch OpenAIEmbeddings to be available (simulate dependency installed)
-            with patch('embeddings.OpenAIEmbeddings', new=MagicMock()):
+            with patch('app.services.embedding_service.OpenAIEmbeddings', new=MagicMock()):
                 with pytest.raises(RuntimeError) as exc_info:
                     EmbeddingFactory.create_embedding_model(provider='openai')
                 
                 assert "OpenAI API key is required" in str(exc_info.value)
     
-    @patch('embeddings.HuggingFaceEmbeddings')
+    @patch('app.services.embedding_service.HuggingFaceEmbeddings')
     def test_default_embedding_model_uses_config(self, mock_hf_embeddings):
         """Test that default embedding model uses Flask app configuration."""
         with self.app.app_context():
@@ -124,7 +124,7 @@ class TestEmbeddingFactory:
                 model_kwargs={'use_auth_token': 'test-hf-token'}
             )
     
-    @patch('embeddings.HuggingFaceEmbeddings')
+    @patch('app.services.embedding_service.HuggingFaceEmbeddings')
     def test_create_embedding_function(self, mock_hf_embeddings):
         """Test creation of embedding function for ChromaDB."""
         with self.app.app_context():
@@ -143,8 +143,8 @@ class TestEmbeddingFactory:
         'EMBEDDING_MODEL': 'text-embedding-ada-002',
         'OPENAI_API_KEY': 'env-openai-key'
     })
-    @patch('embeddings.OpenAIEmbeddings')
-    @patch('embeddings.hasattr')
+    @patch('app.services.embedding_service.OpenAIEmbeddings')
+    @patch('app.services.embedding_service.hasattr')
     def test_fallback_to_environment_variables(self, mock_hasattr, mock_openai_embeddings):
         """Test that factory falls back to environment variables when not in Flask context."""
         # Mock the OpenAI embeddings class
