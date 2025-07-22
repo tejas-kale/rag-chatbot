@@ -9,15 +9,8 @@ from typing import Optional, Union, Any
 from flask import current_app
 
 # LangChain imports - placed at top per code standards
-try:
-    from langchain_huggingface import HuggingFaceEmbeddings
-except ImportError:
-    HuggingFaceEmbeddings = None
-
-try:
-    from langchain_openai import OpenAIEmbeddings
-except ImportError:
-    OpenAIEmbeddings = None
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -88,12 +81,6 @@ class EmbeddingFactory:
         Returns:
             HuggingFaceEmbeddings instance
         """
-        if HuggingFaceEmbeddings is None:
-            raise ImportError(
-                "langchain-huggingface is required for HuggingFace embeddings. "
-                "Install it with: pip install langchain-huggingface"
-            )
-        
         # Get API token from parameter, Flask config, or environment
         if api_key is None:
             if hasattr(current_app, 'config'):
@@ -129,12 +116,6 @@ class EmbeddingFactory:
         Returns:
             OpenAIEmbeddings instance
         """
-        if OpenAIEmbeddings is None:
-            raise ImportError(
-                "langchain-openai is required for OpenAI embeddings. "
-                "Install it with: pip install langchain-openai"
-            )
-        
         # Get API key from parameter, Flask config, or environment
         if api_key is None:
             if hasattr(current_app, 'config'):
