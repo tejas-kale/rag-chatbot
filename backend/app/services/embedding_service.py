@@ -5,7 +5,7 @@ Provides configurable embedding models for different providers.
 
 import logging
 import os
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from flask import current_app
 
@@ -68,10 +68,11 @@ class EmbeddingFactory:
 
         if provider not in EmbeddingFactory.SUPPORTED_PROVIDERS:
             raise ValueError(
-                f"Unsupported embedding provider: {provider}. Supported providers: {EmbeddingFactory.SUPPORTED_PROVIDERS}"
+                f"Unsupported embedding provider: {provider}. "
+                f"Supported providers: {EmbeddingFactory.SUPPORTED_PROVIDERS}"
             )
 
-        logger.info(f"Creating {provider} embedding model: {model_name}")
+        logger.info("Creating %s embedding model: %s", provider, model_name)
 
         if provider == "huggingface":
             return EmbeddingFactory._create_huggingface_embedding(model_name, api_key)
@@ -110,12 +111,12 @@ class EmbeddingFactory:
                 model_name=model_name, model_kwargs=model_kwargs
             )
             logger.info(
-                f"Successfully created HuggingFace embedding model: {model_name}"
+                "Successfully created HuggingFace embedding model: %s", model_name
             )
             return embedding_model
         except Exception as e:
             logger.error(
-                f"Failed to create HuggingFace embedding model '{model_name}': {e}"
+                "Failed to create HuggingFace embedding model '%s': %s", model_name, e
             )
             raise RuntimeError(f"Failed to initialize HuggingFace embedding model: {e}")
 
@@ -146,10 +147,12 @@ class EmbeddingFactory:
 
         try:
             embedding_model = OpenAIEmbeddings(model=model_name, openai_api_key=api_key)
-            logger.info(f"Successfully created OpenAI embedding model: {model_name}")
+            logger.info("Successfully created OpenAI embedding model: %s", model_name)
             return embedding_model
         except Exception as e:
-            logger.error(f"Failed to create OpenAI embedding model '{model_name}': {e}")
+            logger.error(
+                "Failed to create OpenAI embedding model '%s': %s", model_name, e
+            )
             raise RuntimeError(f"Failed to initialize OpenAI embedding model: {e}")
 
 

@@ -8,15 +8,14 @@ import shutil
 import sys
 import tempfile
 import traceback
-from pathlib import Path
-
-# Add the backend directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from flask import Flask
 
 from app.config.config import config
 from app.services.chromadb_service import ChromaDBService
+from flask import Flask
+
+
+# Add the backend directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # noqa: E402
 
 
 def test_chromadb_service():

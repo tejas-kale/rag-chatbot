@@ -8,18 +8,16 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Add the backend directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from flask import Flask
-
 from app.config.config import config
 from app.services.embedding_service import (
     EmbeddingFactory,
     create_embedding_function,
     get_default_embedding_model,
 )
+from flask import Flask
+
+# Add the backend directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 class TestEmbeddingFactory:
@@ -156,7 +154,10 @@ class TestEmbeddingFactory:
     def test_fallback_to_environment_variables(
         self, mock_hasattr, mock_openai_embeddings
     ):
-        """Test that factory falls back to environment variables when not in Flask context."""
+        """
+        Test that factory falls back to environment variables when
+        not in Flask context.
+        """
         # Mock the OpenAI embeddings class
         mock_embedding_instance = MagicMock()
         mock_openai_embeddings.return_value = mock_embedding_instance

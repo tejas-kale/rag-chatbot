@@ -219,7 +219,7 @@ def init_db(app):
             print("✅ Default user settings already exist")
 
         # Print summary
-        print(f"\nDatabase initialization complete!")
+        print("\nDatabase initialization complete!")
         print(f"Database location: {app.config['SQLALCHEMY_DATABASE_URI']}")
         print(f"Tables created: {len(db.metadata.tables)} tables")
         for table_name in db.metadata.tables.keys():

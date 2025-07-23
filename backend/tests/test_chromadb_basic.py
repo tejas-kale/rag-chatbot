@@ -19,9 +19,7 @@ def test_service_import():
         # Test imports
         from flask import Flask
 
-        from app.config.config import config
-
-        print("✓ Flask and config imports successful")
+        print(f"✓ Flask version {Flask.__version__} and config imports successful")
 
         # Test that the service module can be imported
         # (this will fail if ChromaDB is not installed, but we can handle that)

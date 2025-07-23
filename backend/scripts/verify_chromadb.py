@@ -13,10 +13,9 @@ import shutil
 import sys
 import tempfile
 import traceback
-from pathlib import Path
 
 # Add the backend directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # noqa: E402
 
 
 def verify_chromadb_installation():
@@ -37,7 +36,7 @@ def verify_flask_dependencies():
     try:
         import flask
 
-        print(f"✓ Flask is available")
+        print(f"✓ Flask version {flask.__version__} is available")
         return True
     except ImportError:
         print("❌ Flask is not installed")
@@ -83,8 +82,6 @@ def run_chromadb_integration_test():
 def test_flask_integration():
     """Test the Flask integration example."""
     try:
-        import tempfile
-
         temp_dir = tempfile.mkdtemp()
 
         # Set up Flask app with ChromaDB

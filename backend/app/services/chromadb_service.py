@@ -49,7 +49,8 @@ class ChromaDBService:
                     settings=Settings(anonymized_telemetry=False, allow_reset=True),
                 )
                 logger.info(
-                    f"ChromaDB client initialized with persistence path: {persist_path}"
+                    "ChromaDB client initialized with persistence path: %s",
+                    persist_path,
                 )
             except Exception as e:
                 logger.error(f"Failed to initialize ChromaDB client: {e}")
@@ -85,7 +86,7 @@ class ChromaDBService:
                 collection = client.get_collection(
                     name=name, embedding_function=embedding_function
                 )
-                logger.info(f"Retrieved existing collection: {name}")
+                logger.info("Retrieved existing collection: %s", name)
             except ValueError:
                 # Collection doesn't exist, create it
                 collection = client.create_collection(
@@ -93,14 +94,14 @@ class ChromaDBService:
                     metadata=metadata or {},
                     embedding_function=embedding_function,
                 )
-                logger.info(f"Created new collection: {name}")
+                logger.info("Created new collection: %s", name)
 
             # Cache the collection
             self._collections[name] = collection
             return collection
 
         except Exception as e:
-            logger.error(f"Error getting/creating collection '{name}': {e}")
+            logger.error("Error getting/creating collection '%s': %s", name, e)
             raise
 
     def list_collections(self) -> List[str]:
@@ -115,7 +116,7 @@ class ChromaDBService:
             collections = client.list_collections()
             return [collection.name for collection in collections]
         except Exception as e:
-            logger.error(f"Error listing collections: {e}")
+            logger.error("Error listing collections: %s", e)
             return []
 
     def delete_collection(self, name: str) -> bool:
@@ -136,10 +137,10 @@ class ChromaDBService:
             if name in self._collections:
                 del self._collections[name]
 
-            logger.info(f"Deleted collection: {name}")
+            logger.info("Deleted collection: %s", name)
             return True
         except Exception as e:
-            logger.error(f"Error deleting collection '{name}': {e}")
+            logger.error("Error deleting collection '%s': %s", name, e)
             return False
 
     def add_documents(
@@ -175,15 +176,19 @@ class ChromaDBService:
             )
 
             logger.info(
-                f"Added {len(documents)} documents to collection '{collection_name}'"
+                "Added %d documents to collection '%s'", len(documents), collection_name
             )
             return True
         except ValueError as e:
-            logger.error(f"Invalid data format for collection '{collection_name}': {e}")
+            logger.error(
+                "Invalid data format for collection '%s': %s", collection_name, e
+            )
             return False
         except Exception as e:
             logger.error(
-                f"Unexpected error adding documents to collection '{collection_name}': {e}"
+                "Unexpected error adding documents to collection '%s': %s",
+                collection_name,
+                e,
             )
             return False
 
@@ -225,11 +230,13 @@ class ChromaDBService:
             )
 
             logger.info(
-                f"Queried collection '{collection_name}' with {len(query_texts)} queries"
+                "Queried collection '%s' with %d queries",
+                collection_name,
+                len(query_texts),
             )
             return results
         except Exception as e:
-            logger.error(f"Error querying collection '{collection_name}': {e}")
+            logger.error("Error querying collection '%s': %s", collection_name, e)
             return None
 
     def get_collection_count(self, collection_name: str) -> int:
@@ -246,7 +253,9 @@ class ChromaDBService:
             collection = self.get_or_create_collection(collection_name)
             return collection.count()
         except Exception as e:
-            logger.error(f"Error getting count for collection '{collection_name}': {e}")
+            logger.error(
+                "Error getting count for collection '%s': %s", collection_name, e
+            )
             return -1
 
     def reset_client(self) -> bool:
@@ -267,7 +276,7 @@ class ChromaDBService:
             logger.warning("ChromaDB client reset - all data deleted!")
             return True
         except Exception as e:
-            logger.error(f"Error resetting ChromaDB client: {e}")
+            logger.error("Error resetting ChromaDB client: %s", e)
             return False
 
 

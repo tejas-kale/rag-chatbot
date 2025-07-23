@@ -2,14 +2,11 @@
 Test file for encryption/decryption functionality.
 """
 
-import os
-import tempfile
-
 import pytest
 from cryptography.fernet import Fernet
 from flask import Flask
 
-from app.models.models import db, init_db
+from app.models.models import init_db
 from app.services.persistence_service import PersistenceManager
 
 
