@@ -4,7 +4,7 @@ Main Flask application for the RAG chatbot.
 
 import os
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 from app.config.config import config
@@ -49,6 +49,23 @@ def create_app(config_name=None):
     def api_health():
         """API health check endpoint."""
         return jsonify({"status": "ok"})
+
+    @app.route("/api/chat", methods=["POST"])
+    def chat():
+        """Chat endpoint for processing user messages."""
+        try:
+            # Get JSON data from request
+            data = request.get_json()
+
+            # Validate that message field exists
+            if not data or "message" not in data:
+                return jsonify({"error": "Message field is required"}), 400
+
+            # For now, return a placeholder response
+            return jsonify({"response": "I am a bot."})
+
+        except Exception as e:
+            return jsonify({"error": f"Invalid request: {e}"}), 400
 
     return app
 
