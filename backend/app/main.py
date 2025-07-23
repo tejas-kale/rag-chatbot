@@ -64,8 +64,8 @@ def create_app(config_name=None):
             # For now, return a placeholder response
             return jsonify({"response": "I am a bot."})
 
-        except Exception as _:
-            return jsonify({"error": "Invalid request"}), 400
+        except Exception as e:
+            return jsonify({"error": f"Invalid request: {e}"}), 400
 
     return app
 
