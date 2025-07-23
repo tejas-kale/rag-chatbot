@@ -44,11 +44,7 @@ def create_app(config_name=None):
     @app.route('/api/health')
     def api_health():
         """API health check endpoint."""
-        return jsonify({
-            'api': 'RAG Chatbot API',
-            'status': 'healthy',
-            'environment': config_name
-        })
+        return jsonify({'status': 'ok'})
     
     return app
 
