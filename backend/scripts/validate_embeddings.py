@@ -6,8 +6,9 @@ Tests the basic structure and logic without requiring external dependencies.
 import os
 import sys
 
-# Add the backend directory to the Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the backend root directory to the Python path
+backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, backend_root)
 
 
 def test_config_structure():
