@@ -39,7 +39,9 @@ def test_chat_endpoint_success():
             # Check response body
             data = json.loads(response.data)
             expected_response = {"response": "I am a bot."}
-            assert data == expected_response, f"Expected {expected_response}, got {data}"
+            assert (
+                data == expected_response
+            ), f"Expected {expected_response}, got {data}"
 
             print("Chat endpoint success test passed!")
 
