@@ -8,13 +8,12 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.config.config import config
-from app.services.embedding_service import (
-    EmbeddingFactory,
-    create_embedding_function,
-    get_default_embedding_model,
-)
 from flask import Flask
+
+from app.config.config import config
+from app.services.embedding_service import (EmbeddingFactory,
+                                            create_embedding_function,
+                                            get_default_embedding_model)
 
 # Add the backend directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

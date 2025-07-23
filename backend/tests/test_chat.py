@@ -3,15 +3,19 @@ Test module for chat endpoint.
 """
 
 import json
-import sys
+import logging
 import os
+import sys
 
 # Add the parent directory to the path to import the app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
 
 def test_chat_endpoint_success():
-    """Test the /api/chat endpoint with valid input returns correct response."""
+    """Test the /api/chat endpoint with valid input returns response."""
     try:
         from app.main import create_app
 
@@ -43,14 +47,14 @@ def test_chat_endpoint_success():
                 data == expected_response
             ), f"Expected {expected_response}, got {data}"
 
-            print("Chat endpoint success test passed!")
+            logger.info("Chat endpoint success test passed!")
 
     except ImportError as e:
-        print(f"Flask not available for testing: {e}")
+        logger.error(f"Flask not available for testing: {e}")
         # Basic validation of expected response format
         expected_response = {"response": "I am a bot."}
         assert expected_response["response"] == "I am a bot."
-        print("Chat endpoint format validation passed")
+        logger.info("Chat endpoint format validation passed")
 
 
 def test_chat_endpoint_missing_message():
@@ -64,9 +68,7 @@ def test_chat_endpoint_missing_message():
         with app.test_client() as client:
             # Test POST request to /api/chat without message field
             response = client.post(
-                "/api/chat",
-                json={},
-                content_type="application/json"
+                "/api/chat", json={}, content_type="application/json"
             )
 
             # Check status code is 400 Bad Request
@@ -81,13 +83,15 @@ def test_chat_endpoint_missing_message():
 
             # Check response body contains error
             data = json.loads(response.data)
-            assert "error" in data, f"Expected error field in response, got {data}"
+            assert "error" in data, (
+                f"Expected error field in response, got {data}"
+            )
 
-            print("Chat endpoint missing message test passed!")
+            logger.info("Chat endpoint missing message test passed!")
 
     except ImportError as e:
-        print(f"Flask not available for testing: {e}")
-        print("Chat endpoint missing message validation skipped")
+        logger.error(f"Flask not available for testing: {e}")
+        logger.info("Chat endpoint missing message validation skipped")
 
 
 def test_chat_endpoint_no_json():
@@ -107,11 +111,11 @@ def test_chat_endpoint_no_json():
                 response.status_code == 400
             ), f"Expected 400, got {response.status_code}"
 
-            print("Chat endpoint no JSON test passed!")
+            logger.info("Chat endpoint no JSON test passed!")
 
     except ImportError as e:
-        print(f"Flask not available for testing: {e}")
-        print("Chat endpoint no JSON validation skipped")
+        logger.error(f"Flask not available for testing: {e}")
+        logger.info("Chat endpoint no JSON validation skipped")
 
 
 if __name__ == "__main__":
