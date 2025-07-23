@@ -50,7 +50,7 @@ def create_app_with_chromadb(config_name=None):
             return jsonify(
                 {
                     "message": f"Collection {collection_name} "
-                               f"created/retrieved successfully",
+                    f"created/retrieved successfully",
                     "name": collection.name,
                 }
             )
@@ -83,7 +83,7 @@ def create_app_with_chromadb(config_name=None):
                 return jsonify(
                     {
                         "message": f"Added {len(documents)} "
-                                   f"documents to {collection_name}",
+                        f"documents to {collection_name}",
                         "total_documents": count,
                     }
                 )
