@@ -25,9 +25,7 @@ def test_chat_endpoint_success():
         with app.test_client() as client:
             # Test POST request to /api/chat with valid JSON
             response = client.post(
-                "/api/chat",
-                json={"message": "Hello"},
-                content_type="application/json"
+                "/api/chat", json={"message": "Hello"}, content_type="application/json"
             )
 
             # Check status code is 200 OK
@@ -83,9 +81,7 @@ def test_chat_endpoint_missing_message():
 
             # Check response body contains error
             data = json.loads(response.data)
-            assert "error" in data, (
-                f"Expected error field in response, got {data}"
-            )
+            assert "error" in data, f"Expected error field in response, got {data}"
 
             logger.info("Chat endpoint missing message test passed!")
 

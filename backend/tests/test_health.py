@@ -38,9 +38,7 @@ def test_health_endpoint():
 
             # Check response body
             data = json.loads(response.data)
-            assert data == {"status": "ok"}, (
-                f"Expected {{'status': 'ok'}}, got {data}"
-            )
+            assert data == {"status": "ok"}, f"Expected {{'status': 'ok'}}, got {data}"
 
             logger.info("Health endpoint test passed!")
 

@@ -56,15 +56,15 @@ def create_app(config_name=None):
         try:
             # Get JSON data from request
             data = request.get_json()
-            
+
             # Validate that message field exists
             if not data or "message" not in data:
                 return jsonify({"error": "Message field is required"}), 400
-            
+
             # For now, return a placeholder response
             return jsonify({"response": "I am a bot."})
-            
-        except Exception as e:
+
+        except Exception as _:
             return jsonify({"error": "Invalid request"}), 400
 
     return app
