@@ -3,14 +3,16 @@ Persistence service for the RAG chatbot application.
 Provides a clean interface for all database operations (CRUD) for all models.
 """
 
-import logging
 import json
-from typing import List, Optional, Dict, Any
+import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from cryptography.fernet import Fernet
-from sqlalchemy.exc import SQLAlchemyError
-from models import db, UserSettings, ChatHistory, DataSource, Transcription
 from flask import current_app
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.models.models import ChatHistory, DataSource, Transcription, UserSettings, db
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -207,13 +209,13 @@ class PersistenceManager:
                 )
                 if user_settings is None:
                     return False
-                
+
                 # Now encrypt and add the API keys
                 encrypted_api_keys = self.encrypt_key(api_keys)
                 if encrypted_api_keys is None:
                     logger.error("Failed to encrypt API keys during user creation")
                     return False
-                
+
                 user_settings.api_keys = encrypted_api_keys
                 user_settings.updated_at = datetime.utcnow()
                 db.session.commit()

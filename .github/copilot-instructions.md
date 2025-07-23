@@ -12,6 +12,7 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Implement proper error handling and logging
 - Write unit tests for all new functionality
 - Use meaningful variable and function names
+- Always give preference to double quotes when using strings.
 
 ### Security Best Practices
 - Never commit sensitive information (API keys, passwords, secrets)
@@ -36,6 +37,15 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Follow Python naming conventions (snake_case)
 - Use list comprehensions and generator expressions appropriately
 - Handle exceptions gracefully with try-except blocks
+- **NEVER place imports inside try-except blocks** - all imports must be at the top of the file
+- Import external dependencies at module level to allow early detection of missing packages
+- **Code Formatting Requirements:**
+  - ALL Python code must be formatted with Black before committing
+    - Command: `uv run black app/ tests/ scripts/`
+    - Ensure all code follows consistent formatting standards
+  - ALL flake8 warnings must be corrected before committing
+    - Command: `uv run flake8 app/ tests/ scripts/`
+    - Maintain code quality and adhere to PEP 8 standards
 
 ### LangChain Integration
 - Use LangChain for building the RAG pipeline
@@ -103,6 +113,19 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Use pull requests for code review
 - Keep commits atomic and focused on single changes
 - Write descriptive commit messages
+
+### Code Formatting and Linting (REQUIRED)
+- **ALWAYS run Black formatter before committing any Python code changes**
+  - Command: `uv run black app/ tests/ scripts/`
+  - Ensure all code follows consistent formatting standards
+- **ALWAYS run isort import sorter before committing any Python code changes**
+  - Command: `uv run isort app/ tests/ scripts/`
+  - Maintain consistent import organization and ordering
+- **ALWAYS verify formatting compliance before committing**
+  - Check command: `uv run black --check --diff app/ tests/ scripts/`
+  - Check command: `uv run isort --check-only --diff app/ tests/ scripts/`
+- These tools are integrated into CI/CD pipeline and must pass for PR approval
+- Use the same commands that are used in GitHub Actions workflow
 
 ### Testing
 - Write unit tests for all business logic

@@ -2,7 +2,7 @@
 name = "rag-chatbot-backend"
 version = "1.0.0"
 description = "Backend for RAG Chatbot application built with Flask"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
     "Flask==3.0.0",
     "python-dotenv==1.0.0",
@@ -10,11 +10,16 @@ dependencies = [
     "Flask-SQLAlchemy==3.1.1",
     "cryptography>=3.0.0",
     "chromadb>=0.4.15",
+    "langchain>=0.1.0",
+    "langchain-community>=0.0.20",
+    "langchain-openai>=0.0.5",
+    "langchain-huggingface>=0.0.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
+    "pytest-cov",
     "black",
     "flake8",
 ]
