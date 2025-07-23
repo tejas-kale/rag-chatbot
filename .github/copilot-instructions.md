@@ -12,6 +12,7 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Implement proper error handling and logging
 - Write unit tests for all new functionality
 - Use meaningful variable and function names
+- Always give preference to double quotes when using strings.
 
 ### Security Best Practices
 - Never commit sensitive information (API keys, passwords, secrets)
@@ -40,9 +41,11 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Import external dependencies at module level to allow early detection of missing packages
 - **Code Formatting Requirements:**
   - ALL Python code must be formatted with Black before committing
-  - ALL imports must be organized with isort before committing
-  - Follow PEP 8 standards and maintain consistent code style
-  - Run formatting tools after any code changes
+    - Command: `uv run black app/ tests/ scripts/`
+    - Ensure all code follows consistent formatting standards
+  - ALL flake8 warnings must be corrected before committing
+    - Command: `uv run flake8 app/ tests/ scripts/`
+    - Maintain code quality and adhere to PEP 8 standards
 
 ### LangChain Integration
 - Use LangChain for building the RAG pipeline

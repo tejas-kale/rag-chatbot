@@ -7,7 +7,7 @@ import os
 import sys
 
 # Add the backend root directory to the Python path
-backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, backend_root)
 
 
