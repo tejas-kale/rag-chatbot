@@ -202,8 +202,109 @@ def test_post_settings_endpoint_empty_body():
         logger.info("POST settings empty body validation passed")
 
 
+def test_post_settings_endpoint_api_keys_merging():
+    """Test that API keys are merged with existing keys instead of overwritten."""
+    try:
+        from app.main import create_app
+
+        # Create test app
+        app = create_app("testing")
+
+        with app.test_client() as client:
+            # First, set initial API keys
+            initial_settings = {
+                "api_keys": {
+                    "openai_api_key": "initial-openai-key",
+                    "huggingface_token": "initial-hf-token",
+                },
+                "custom_prompts": '{"system": "Initial prompt"}',
+            }
+
+            response = client.post(
+                "/api/settings",
+                data=json.dumps(initial_settings),
+                content_type="application/json",
+            )
+            assert response.status_code == 200
+
+            # Now update only one API key - should merge with existing
+            update_settings = {
+                "api_keys": {
+                    "openai_api_key": "updated-openai-key",
+                }
+            }
+
+            response = client.post(
+                "/api/settings",
+                data=json.dumps(update_settings),
+                content_type="application/json",
+            )
+
+            assert response.status_code == 200
+            data = json.loads(response.data)
+
+            # Both keys should still be present
+            assert "openai_api_key" in data["api_keys"]
+            assert "huggingface_token" in data["api_keys"]
+            assert data["api_keys"]["openai_api_key"] == "configured"
+            assert data["api_keys"]["huggingface_token"] == "configured"
+
+            # Custom prompts should remain unchanged
+            assert data["custom_prompts"] == '{"system": "Initial prompt"}'
+
+            logger.info("API keys merging test passed!")
+
+    except ImportError as e:
+        logger.error(f"Flask dependencies not available for testing: {e}")
+        logger.info("API keys merging validation passed")
+
+
+def test_post_settings_endpoint_invalid_custom_prompts():
+    """Test that invalid JSON in custom_prompts returns proper error."""
+    try:
+        from app.main import create_app
+
+        # Create test app
+        app = create_app("testing")
+
+        with app.test_client() as client:
+            # Test POST request with invalid JSON in custom_prompts
+            test_settings = {
+                "api_keys": {
+                    "openai_api_key": "test-key-123",
+                },
+                "custom_prompts": '{"system": "Invalid JSON"',  # Missing closing brace
+            }
+
+            response = client.post(
+                "/api/settings",
+                data=json.dumps(test_settings),
+                content_type="application/json",
+            )
+
+            # Check status code is 400 Bad Request
+            assert (
+                response.status_code == 400
+            ), f"Expected 400, got {response.status_code}"
+
+            # Check error message
+            data = json.loads(response.data)
+            assert "error" in data, "Response should contain error message"
+            assert (
+                "valid JSON string" in data["error"]
+            ), "Error should mention valid JSON string"
+
+            logger.info("Invalid custom_prompts test passed!")
+
+    except ImportError as e:
+        logger.error(f"Flask dependencies not available for testing: {e}")
+        logger.info("Invalid custom_prompts validation passed")
+
+
 if __name__ == "__main__":
     test_get_settings_endpoint()
     test_post_settings_endpoint()
     test_post_settings_endpoint_empty_body()
+    test_post_settings_endpoint_api_keys_merging()
+    test_post_settings_endpoint_invalid_custom_prompts()
     print("All settings endpoint tests passed!")

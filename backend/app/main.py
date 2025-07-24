@@ -2,6 +2,7 @@
 Main Flask application for the RAG chatbot.
 """
 
+import json
 import os
 
 from flask import Flask, jsonify, request
@@ -153,12 +154,23 @@ def create_app(config_name=None):
             api_keys = data.get("api_keys")
             custom_prompts = data.get("custom_prompts")
 
+            # Validate custom_prompts is a valid JSON string if provided
+            if custom_prompts is not None:
+                try:
+                    json.loads(custom_prompts)
+                except (json.JSONDecodeError, TypeError):
+                    return jsonify({"error": "custom_prompts must be a valid JSON string"}), 400
+
             if user_settings:
                 # Update existing settings
                 update_data = {}
 
                 if api_keys is not None:
-                    update_data["api_keys"] = api_keys
+                    # Merge existing API keys with new ones
+                    existing_api_keys = persistence_manager.get_api_keys(user_id) or {}
+                    merged_api_keys = existing_api_keys.copy()
+                    merged_api_keys.update(api_keys)
+                    update_data["api_keys"] = merged_api_keys
 
                 if custom_prompts is not None:
                     update_data["custom_prompts"] = custom_prompts
