@@ -185,7 +185,7 @@ def create_app(config_name=None):
                         user_settings.id, **update_data
                     )
                     if not updated_settings:
-                        return jsonify({"error": "Failed to update settings"}), 500
+                        return jsonify({"error": "Failed to update settings"}), 400
                 else:
                     updated_settings = user_settings
             else:
@@ -194,14 +194,14 @@ def create_app(config_name=None):
                     user_id=user_id, api_keys=api_keys, custom_prompts=custom_prompts
                 )
                 if not updated_settings:
-                    return jsonify({"error": "Failed to create settings"}), 500
+                    return jsonify({"error": "Failed to create settings"}), 400
 
             # Return sanitized response
             settings_data = _sanitize_settings_response(updated_settings)
             return jsonify(settings_data)
 
         except Exception as e:
-            return jsonify({"error": f"Failed to update settings: {str(e)}"}), 500
+            return jsonify({"error": f"Failed to update settings: {str(e)}"}), 400
 
     return app
 
