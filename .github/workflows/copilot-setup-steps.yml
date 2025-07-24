@@ -23,12 +23,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Set up Node.js (for frontend)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
       - name: Install uv (Python package manager)
         uses: astral-sh/setup-uv@v3
         with:
