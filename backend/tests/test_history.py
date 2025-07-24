@@ -92,9 +92,7 @@ def test_history_endpoint_with_data():
 
                 # Check response body
                 data = json.loads(response.data)
-                assert isinstance(data, list), (
-                    f"Expected array, got {type(data)}"
-                )
+                assert isinstance(data, list), f"Expected array, got {type(data)}"
                 assert len(data) == 2, f"Expected 2 items, got {len(data)}"
 
                 # Check first item structure
@@ -107,9 +105,7 @@ def test_history_endpoint_with_data():
                     "timestamp",
                     "context_sources",
                 }
-                assert (
-                    set(first_item.keys()) == expected_fields
-                ), (
+                assert set(first_item.keys()) == expected_fields, (
                     f"Expected fields {expected_fields}, "
                     f"got {set(first_item.keys())}"
                 )
