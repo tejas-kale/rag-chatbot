@@ -159,7 +159,12 @@ def create_app(config_name=None):
                 try:
                     json.loads(custom_prompts)
                 except (json.JSONDecodeError, TypeError):
-                    return jsonify({"error": "custom_prompts must be a valid JSON string"}), 400
+                    return (
+                        jsonify(
+                            {"error": "custom_prompts must be a valid JSON string"}
+                        ),
+                        400,
+                    )
 
             if user_settings:
                 # Update existing settings
