@@ -141,7 +141,7 @@ def create_app(config_name=None):
             # Get JSON data from request
             data = request.get_json()
 
-            if not data:
+            if not data or len(data) == 0:
                 return jsonify({"error": "Request body is required"}), 400
 
             # For now, use default_user as user_id
@@ -185,7 +185,7 @@ def create_app(config_name=None):
                         user_settings.id, **update_data
                     )
                     if not updated_settings:
-                        return jsonify({"error": "Failed to update settings"}), 400
+                        return jsonify({"error": "Failed to update settings"}), 500
                 else:
                     updated_settings = user_settings
             else:
@@ -194,7 +194,7 @@ def create_app(config_name=None):
                     user_id=user_id, api_keys=api_keys, custom_prompts=custom_prompts
                 )
                 if not updated_settings:
-                    return jsonify({"error": "Failed to create settings"}), 400
+                    return jsonify({"error": "Failed to create settings"}), 500
 
             # Return sanitized response
             settings_data = _sanitize_settings_response(updated_settings)

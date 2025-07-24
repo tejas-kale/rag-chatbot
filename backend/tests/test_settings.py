@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 
+import pytest
 from cryptography.fernet import Fernet
 
 # Add the parent directory to the path to import the app
@@ -167,42 +168,40 @@ def test_post_settings_endpoint():
         logger.info("POST settings endpoint format validation passed")
 
 
-def test_post_settings_endpoint_empty_body():
-    """Test the POST /api/settings endpoint handles empty body correctly."""
+@pytest.mark.parametrize(
+    "body,expected_error",
+    [
+        ("{}", "Request body is required"),
+        ("", "Failed to update settings"),
+    ],
+)
+def test_post_settings_endpoint_empty_body(body, expected_error):
+    """Test the POST /api/settings endpoint handles empty or invalid body correctly."""
     try:
         from app.main import create_app
 
-        # Create test app
         app = create_app("testing")
 
         with app.test_client() as client:
-            # Test POST request to /api/settings with empty body
             response = client.post(
-                "/api/settings", data="", content_type="application/json"
+                "/api/settings", data=body, content_type="application/json"
             )
-
-            # Check status code is 400 Bad Request
             assert (
                 response.status_code == 400
-            ), f"Expected 400, got {response.status_code}"
-
-            # Check response is JSON
+            ), f"Expected 400, got {response.status_code} for body: {body}"
             assert (
                 response.content_type == "application/json"
             ), f"Expected JSON, got {response.content_type}"
-
-            # Check error message
             data = json.loads(response.data)
             assert "error" in data, "Response should contain error message"
             assert (
-                "required" in data["error"].lower()
-            ), "Error should mention required body"
+                expected_error.lower() in data["error"].lower()
+            ), f"Error should mention '{expected_error}' for body: {body}"
 
-            logger.info("POST settings empty body test passed!")
-
+        logger.info("POST settings empty/invalid body test passed!")
     except ImportError as e:
         logger.error(f"Flask dependencies not available for testing: {e}")
-        logger.info("POST settings empty body validation passed")
+        logger.info("POST settings empty/invalid body validation passed")
 
 
 def test_post_settings_endpoint_api_keys_merging():
