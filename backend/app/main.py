@@ -203,6 +203,37 @@ def create_app(config_name=None):
         except Exception as e:
             return jsonify({"error": f"Failed to update settings: {str(e)}"}), 400
 
+    @app.route("/api/history", methods=["GET"])
+    def get_history():
+        """Get chat conversation history."""
+        try:
+            # Get all chat history ordered by timestamp
+            chat_history = persistence_manager.get_recent_chat_history(limit=1000)
+
+            # Convert to JSON serializable format
+            history_data = []
+            for chat in chat_history:
+                history_data.append(
+                    {
+                        "id": chat.id,
+                        "session_id": chat.session_id,
+                        "user_message": chat.user_message,
+                        "bot_response": chat.bot_response,
+                        "timestamp": (
+                            chat.timestamp.isoformat() if chat.timestamp else None
+                        ),
+                        "context_sources": chat.context_sources,
+                    }
+                )
+
+            # Reverse to get chronological order (oldest first)
+            history_data.reverse()
+
+            return jsonify(history_data)
+
+        except Exception as e:
+            return jsonify({"error": f"Failed to retrieve chat history: {str(e)}"}), 500
+
     return app
 
 
