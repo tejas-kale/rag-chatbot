@@ -38,14 +38,24 @@ def test_get_settings_endpoint():
 
             # Check response body structure
             data = json.loads(response.data)
-            expected_keys = {"user_id", "api_keys", "custom_prompts", "created_at", "updated_at"}
-            assert set(data.keys()) == expected_keys, f"Expected keys {expected_keys}, got {set(data.keys())}"
-            
+            expected_keys = {
+                "user_id",
+                "api_keys",
+                "custom_prompts",
+                "created_at",
+                "updated_at",
+            }
+            assert (
+                set(data.keys()) == expected_keys
+            ), f"Expected keys {expected_keys}, got {set(data.keys())}"
+
             # Check that API keys object exists (should be empty for new user)
             assert isinstance(data["api_keys"], dict), "API keys should be a dictionary"
-            
+
             # Check user_id is default_user
-            assert data["user_id"] == "default_user", f"Expected default_user, got {data['user_id']}"
+            assert (
+                data["user_id"] == "default_user"
+            ), f"Expected default_user, got {data['user_id']}"
 
             logger.info("GET settings endpoint test passed!")
 
@@ -57,7 +67,7 @@ def test_get_settings_endpoint():
             "api_keys": {},
             "custom_prompts": None,
             "created_at": None,
-            "updated_at": None
+            "updated_at": None,
         }
         assert expected_response["user_id"] == "default_user"
         logger.info("GET settings endpoint format validation passed")
@@ -76,14 +86,16 @@ def test_post_settings_endpoint():
             test_settings = {
                 "api_keys": {
                     "openai_api_key": "test-key-123",
-                    "huggingface_token": "test-token-456"
+                    "huggingface_token": "test-token-456",
                 },
-                "custom_prompts": '{"system": "You are a helpful assistant."}'
+                "custom_prompts": '{"system": "You are a helpful assistant."}',
             }
-            
-            response = client.post("/api/settings", 
-                                 data=json.dumps(test_settings),
-                                 content_type="application/json")
+
+            response = client.post(
+                "/api/settings",
+                data=json.dumps(test_settings),
+                content_type="application/json",
+            )
 
             # Check status code is 200 OK
             assert (
@@ -97,20 +109,40 @@ def test_post_settings_endpoint():
 
             # Check response body structure
             data = json.loads(response.data)
-            expected_keys = {"user_id", "api_keys", "custom_prompts", "created_at", "updated_at"}
-            assert set(data.keys()) == expected_keys, f"Expected keys {expected_keys}, got {set(data.keys())}"
-            
+            expected_keys = {
+                "user_id",
+                "api_keys",
+                "custom_prompts",
+                "created_at",
+                "updated_at",
+            }
+            assert (
+                set(data.keys()) == expected_keys
+            ), f"Expected keys {expected_keys}, got {set(data.keys())}"
+
             # Check that API keys are marked as configured (but values not exposed)
-            assert "openai_api_key" in data["api_keys"], "OpenAI API key should be listed"
-            assert "huggingface_token" in data["api_keys"], "HuggingFace token should be listed"
-            assert data["api_keys"]["openai_api_key"] == "configured", "API key should show as configured"
-            assert data["api_keys"]["huggingface_token"] == "configured", "Token should show as configured"
-            
+            assert (
+                "openai_api_key" in data["api_keys"]
+            ), "OpenAI API key should be listed"
+            assert (
+                "huggingface_token" in data["api_keys"]
+            ), "HuggingFace token should be listed"
+            assert (
+                data["api_keys"]["openai_api_key"] == "configured"
+            ), "API key should show as configured"
+            assert (
+                data["api_keys"]["huggingface_token"] == "configured"
+            ), "Token should show as configured"
+
             # Check custom prompts are returned
-            assert data["custom_prompts"] == test_settings["custom_prompts"], "Custom prompts should match"
-            
+            assert (
+                data["custom_prompts"] == test_settings["custom_prompts"]
+            ), "Custom prompts should match"
+
             # Check user_id is default_user
-            assert data["user_id"] == "default_user", f"Expected default_user, got {data['user_id']}"
+            assert (
+                data["user_id"] == "default_user"
+            ), f"Expected default_user, got {data['user_id']}"
 
             logger.info("POST settings endpoint test passed!")
 
@@ -119,10 +151,13 @@ def test_post_settings_endpoint():
         # Basic validation of expected response format
         expected_response = {
             "user_id": "default_user",
-            "api_keys": {"openai_api_key": "configured", "huggingface_token": "configured"},
+            "api_keys": {
+                "openai_api_key": "configured",
+                "huggingface_token": "configured",
+            },
             "custom_prompts": '{"system": "You are a helpful assistant."}',
             "created_at": "2024-01-01T00:00:00",
-            "updated_at": "2024-01-01T00:00:00"
+            "updated_at": "2024-01-01T00:00:00",
         }
         assert expected_response["user_id"] == "default_user"
         assert "configured" in expected_response["api_keys"]["openai_api_key"]
@@ -139,9 +174,9 @@ def test_post_settings_endpoint_empty_body():
 
         with app.test_client() as client:
             # Test POST request to /api/settings with empty body
-            response = client.post("/api/settings", 
-                                 data="",
-                                 content_type="application/json")
+            response = client.post(
+                "/api/settings", data="", content_type="application/json"
+            )
 
             # Check status code is 400 Bad Request
             assert (
@@ -156,7 +191,9 @@ def test_post_settings_endpoint_empty_body():
             # Check error message
             data = json.loads(response.data)
             assert "error" in data, "Response should contain error message"
-            assert "required" in data["error"].lower(), "Error should mention required body"
+            assert (
+                "required" in data["error"].lower()
+            ), "Error should mention required body"
 
             logger.info("POST settings empty body test passed!")
 
