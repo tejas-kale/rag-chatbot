@@ -132,7 +132,7 @@ def create_app(config_name=None):
             return jsonify(settings_data)
 
         except Exception as e:
-            return jsonify({"error": f"Failed to retrieve settings: {str(e)}"}), 500
+            return jsonify({"error": f"Failed to retrieve settings: {str(e)}"}), 400
 
     @app.route("/api/settings", methods=["POST"])
     def update_settings():

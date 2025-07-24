@@ -7,8 +7,13 @@ import logging
 import os
 import sys
 
+from cryptography.fernet import Fernet
+
 # Add the parent directory to the path to import the app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+# Set ENCRYPTION_KEY for tests (Fernet requires a 32-byte url-safe base64-encoded key)
+os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
 # Configure logger
 logger = logging.getLogger(__name__)
