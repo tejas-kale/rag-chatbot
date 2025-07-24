@@ -38,10 +38,3 @@ jobs:
         run: |
           cd backend
           uv sync --dev
-
-      - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
-        # Only run if frontend/ exists
-        if: ${{ exists('frontend/package.json') }}
