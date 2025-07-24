@@ -12,9 +12,6 @@ from cryptography.fernet import Fernet
 # Add the parent directory to the path to import the app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Set ENCRYPTION_KEY for tests (Fernet requires a 32-byte url-safe base64-encoded key)
-os.environ["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
-
 # Configure logger
 logger = logging.getLogger(__name__)
 
@@ -85,6 +82,7 @@ def test_post_settings_endpoint():
 
         # Create test app
         app = create_app("testing")
+        app.config["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
         with app.test_client() as client:
             # Test POST request to /api/settings with new settings
@@ -214,6 +212,7 @@ def test_post_settings_endpoint_api_keys_merging():
 
         # Create test app
         app = create_app("testing")
+        app.config["ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
         with app.test_client() as client:
             # First, set initial API keys

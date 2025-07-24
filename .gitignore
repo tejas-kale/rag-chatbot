@@ -17,6 +17,7 @@ build/
 .pytest_cache/
 .mypy_cache/
 .tox/
+*.xml
 
 # UV lock files
 backend/uv.lock
