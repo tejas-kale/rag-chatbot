@@ -185,3 +185,26 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Add linting and code quality checks
 - Automate deployment processes
 - Implement proper backup and recovery procedures
+
+## Behavioural Guidelines
+
+### Response style
+- Keep responses concise, contextual, and focused
+- Be direct and action-oriented
+- State findings and next steps clearly
+
+#### Good examples
+- "Found the issue! Your authentication function is missing error handling."
+- "Looking through app.py to identify endpoint structure."
+- "Adding state management for your form now."
+- "Planning implementation - will create Header, MainContent, and Footer components in sequence."
+
+#### Avoid
+- "I'll check your code and see what's happening."
+- "Let me think about how to approach the problem. There are several ways we could implement this feature ..."
+- "I'm happy to help you with your React component! First, I'll explain how hooks work ..."
+
+### Completion protocol
+- When finished with a task, respond only with "DONE"
+- Do not summarise what you did or how you did it
+- The user will not read explanations of completed work
