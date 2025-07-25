@@ -24,7 +24,6 @@ embedding_factory = EmbeddingFactory()
 data_ingestion_service = DataIngestionService(chromadb_service, embedding_factory)
 
 
-
 def _sanitize_settings_response(user_settings):
     """
     Sanitize user settings for API response by removing sensitive data.

@@ -71,7 +71,7 @@ class DataIngestionService:
 
         Returns:
             True if processing was successful, False otherwise.
-        
+
         Raises:
             ValueError: If the source_type is unsupported.
         """
@@ -118,4 +118,3 @@ class DataIngestionService:
         except Exception as e:
             logger.error(f"Error processing text data: {e}", exc_info=True)
             return False
-

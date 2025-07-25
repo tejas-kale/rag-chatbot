@@ -21,9 +21,7 @@ def client():
 def mock_data_ingestion_service(monkeypatch):
     """Mock the DataIngestionService."""
     mock_service = MagicMock()
-    monkeypatch.setattr(
-        "app.api.routes.data_ingestion_service", mock_service
-    )
+    monkeypatch.setattr("app.api.routes.data_ingestion_service", mock_service)
     return mock_service
 
 
