@@ -6,13 +6,14 @@ including chunking, embedding, and storing the data in ChromaDB.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, Optional, Union
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 
 from app.services.chromadb_service import ChromaDBService
-from app.services.embedding_service import EmbeddingFactory
+from app.services.embedding_service import (
+    EmbeddingFactory,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -82,7 +83,9 @@ class DataIngestionService:
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
 
-    def _process_text(self, text: str, metadata: Optional[Dict] = None) -> bool:
+    def _process_text(
+        self, text: str, metadata: Optional[Dict] = None
+    ) -> bool:
         """
         Process a text data source.
 
@@ -113,7 +116,9 @@ class DataIngestionService:
                 metadatas=metadatas,
             )
 
-            logger.info(f"Successfully processed and stored {len(chunks)} text chunks.")
+            logger.info(
+                f"Successfully processed and stored {len(chunks)} text chunks."
+            )
             return True
         except Exception as e:
             logger.error(f"Error processing text data: {e}", exc_info=True)
