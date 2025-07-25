@@ -76,9 +76,7 @@ def test_ingest_data_unsupported_type(client, mock_data_ingestion_service):
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert (
-        response.json["error"] == "Unsupported data source type: invalid_type"
-    )
+    assert response.json["error"] == "Unsupported data source type: invalid_type"
 
 
 def test_ingest_data_bad_request(client):

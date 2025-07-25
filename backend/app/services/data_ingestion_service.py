@@ -83,9 +83,7 @@ class DataIngestionService:
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
 
-    def _process_text(
-        self, text: str, metadata: Optional[Dict] = None
-    ) -> bool:
+    def _process_text(self, text: str, metadata: Optional[Dict] = None) -> bool:
         """
         Process a text data source.
 
@@ -116,9 +114,7 @@ class DataIngestionService:
                 metadatas=metadatas,
             )
 
-            logger.info(
-                f"Successfully processed and stored {len(chunks)} text chunks."
-            )
+            logger.info(f"Successfully processed and stored {len(chunks)} text chunks.")
             return True
         except Exception as e:
             logger.error(f"Error processing text data: {e}", exc_info=True)

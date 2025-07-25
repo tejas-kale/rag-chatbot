@@ -21,9 +21,7 @@ persistence_manager = PersistenceManager()
 # Initialize services
 chromadb_service = ChromaDBService()
 embedding_factory = EmbeddingFactory()
-data_ingestion_service = DataIngestionService(
-    chromadb_service, embedding_factory
-)
+data_ingestion_service = DataIngestionService(chromadb_service, embedding_factory)
 
 
 def _sanitize_settings_response(user_settings):
@@ -59,14 +57,10 @@ def _sanitize_settings_response(user_settings):
         "api_keys": api_keys_status,
         "custom_prompts": user_settings.custom_prompts,
         "created_at": (
-            user_settings.created_at.isoformat()
-            if user_settings.created_at
-            else None
+            user_settings.created_at.isoformat() if user_settings.created_at else None
         ),
         "updated_at": (
-            user_settings.updated_at.isoformat()
-            if user_settings.updated_at
-            else None
+            user_settings.updated_at.isoformat() if user_settings.updated_at else None
         ),
     }
 
@@ -115,9 +109,7 @@ def get_settings():
         user_id = "default_user"
 
         # Get user settings from database
-        user_settings = persistence_manager.get_user_settings_by_user_id(
-            user_id
-        )
+        user_settings = persistence_manager.get_user_settings_by_user_id(user_id)
 
         # Sanitize response to remove sensitive data
         settings_data = _sanitize_settings_response(user_settings)
@@ -145,9 +137,7 @@ def update_settings():
         user_id = "default_user"
 
         # Get existing user settings or create new ones
-        user_settings = persistence_manager.get_user_settings_by_user_id(
-            user_id
-        )
+        user_settings = persistence_manager.get_user_settings_by_user_id(user_id)
 
         # Extract API keys and custom prompts from request
         api_keys = data.get("api_keys")
@@ -159,9 +149,7 @@ def update_settings():
                 json.loads(custom_prompts)
             except (json.JSONDecodeError, TypeError):
                 return (
-                    jsonify(
-                        {"error": "custom_prompts must be a valid JSON string"}
-                    ),
+                    jsonify({"error": "custom_prompts must be a valid JSON string"}),
                     400,
                 )
 
@@ -171,9 +159,7 @@ def update_settings():
 
             if api_keys is not None:
                 # Merge existing API keys with new ones
-                existing_api_keys = (
-                    persistence_manager.get_api_keys(user_id) or {}
-                )
+                existing_api_keys = persistence_manager.get_api_keys(user_id) or {}
                 merged_api_keys = existing_api_keys.copy()
                 merged_api_keys.update(api_keys)
                 update_data["api_keys"] = merged_api_keys
@@ -218,9 +204,7 @@ def get_history():
     """Get chat conversation history."""
     try:
         # Get all chat history ordered by timestamp
-        chat_history = persistence_manager.get_recent_chat_history(
-            limit=1000
-        )
+        chat_history = persistence_manager.get_recent_chat_history(limit=1000)
 
         # Convert to JSON serializable format
         history_data = []
