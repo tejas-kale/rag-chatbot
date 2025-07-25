@@ -8,12 +8,20 @@ import json
 from flask import Blueprint, jsonify, request
 
 from app.services.persistence_service import PersistenceManager
+from app.services.chromadb_service import ChromaDBService
+from app.services.embedding_service import EmbeddingFactory
+from app.services.data_ingestion_service import DataIngestionService
 
 # Create blueprint for API routes
 api_bp = Blueprint("api", __name__)
 
 # Initialize persistence manager
 persistence_manager = PersistenceManager()
+
+# Initialize services
+chromadb_service = ChromaDBService()
+embedding_factory = EmbeddingFactory()
+data_ingestion_service = DataIngestionService(chromadb_service, embedding_factory)
 
 
 def _sanitize_settings_response(user_settings):
@@ -224,3 +232,32 @@ def get_history():
             jsonify({"error": f"Failed to retrieve chat history: {str(e)}"}),
             500,
         )
+
+
+@api_bp.route("/api/ingest", methods=["POST"])
+def ingest_data():
+    """Endpoint for ingesting data into the RAG system."""
+    try:
+        data = request.get_json()
+        if not data or "source_type" not in data or "data" not in data:
+            return (
+                jsonify({"error": "Missing source_type or data in request"}),
+                400,
+            )
+
+        source_type = data["source_type"]
+        source_data = data["data"]
+        metadata = data.get("metadata", {})
+
+        success = data_ingestion_service.process_source(
+            source_data, source_type, metadata
+        )
+
+        if success:
+            return jsonify({"message": "Data ingested successfully"}), 200
+        else:
+            return jsonify({"error": "Failed to ingest data"}), 500
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
