@@ -82,12 +82,20 @@ class DataIngestionTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json["error"], "Failed to ingest data")
 
-    def test_ingest_data_bad_request(self):
-        """Test the /api/ingest endpoint with a bad request."""
-        # Prepare an invalid payload
-        payload = {"data": "This is a test document."}  # Missing source_type
+    def test_ingest_data_unsupported_type(self):
+        """Test data ingestion with an unsupported source type."""
+        # Configure the mock to raise a ValueError
+        self.mock_data_ingestion_service.process_source.side_effect = ValueError(
+            "Unsupported data source type: invalid_type"
+        )
 
-        # Send a POST request
+        # Prepare the request payload
+        payload = {
+            "source_type": "invalid_type",
+            "data": "This is a test document.",
+        }
+
+        # Send a POST request to the /api/ingest endpoint
         response = self.client.post(
             "/api/ingest", data=json.dumps(payload), content_type="application/json"
         )
@@ -95,7 +103,7 @@ class DataIngestionTestCase(unittest.TestCase):
         # Check the response
         self.assertEqual(response.status_code, 400)
         self.assertEqual(
-            response.json["error"], "Missing source_type or data in request"
+            response.json["error"], "Unsupported data source type: invalid_type"
         )
 
 

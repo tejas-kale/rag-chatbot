@@ -255,6 +255,7 @@ def ingest_data():
             return jsonify({"message": "Data ingested successfully"}), 200
         else:
             return jsonify({"error": "Failed to ingest data"}), 500
-
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500

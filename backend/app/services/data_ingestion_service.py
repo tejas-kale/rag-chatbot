@@ -6,7 +6,8 @@ including chunking, embedding, and storing the data in ChromaDB.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
 
@@ -55,7 +56,10 @@ class DataIngestionService:
         )
 
     def process_source(
-        self, data_source: Any, source_type: str, metadata: Optional[Dict] = None
+        self,
+        data_source: Union[str, bytes],
+        source_type: str,
+        metadata: Optional[Dict] = None,
     ) -> bool:
         """
         Process a data source based on its type.
@@ -67,14 +71,16 @@ class DataIngestionService:
 
         Returns:
             True if processing was successful, False otherwise.
+        
+        Raises:
+            ValueError: If the source_type is unsupported.
         """
         logger.info(f"Processing data source of type: {source_type}")
         if source_type == "text":
             return self._process_text(data_source, metadata)
         # Add other source types here (e.g., "file", "url")
         else:
-            logger.warning(f"Unsupported data source type: {source_type}")
-            return False
+            raise ValueError(f"Unsupported data source type: {source_type}")
 
     def _process_text(self, text: str, metadata: Optional[Dict] = None) -> bool:
         """
@@ -99,7 +105,7 @@ class DataIngestionService:
             embeddings = embedding_model.embed_documents(chunks)
 
             # 3. Store in ChromaDB
-            metadatas = [metadata or {} for _ in chunks]
+            metadatas = [metadata or {}] * len(chunks)
             self.chromadb_service.add_documents(
                 collection_name=self.collection_name,
                 documents=chunks,
