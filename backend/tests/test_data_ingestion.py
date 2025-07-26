@@ -78,9 +78,7 @@ def test_ingest_data_unsupported_type(client, mock_data_ingestion_service):
         content_type="application/json",
     )
     assert response.status_code == 400
-    assert response.json["error"] == (
-        "Unsupported data source type: invalid_type"
-    )
+    assert response.json["error"] == ("Unsupported data source type: invalid_type")
 
 
 def test_ingest_data_bad_request(client):
@@ -164,9 +162,7 @@ def test_ingest_pdf_success(client, mock_data_ingestion_service):
     mock_data_ingestion_service.process_source.return_value = True
 
     # Create a temporary test PDF
-    pdf_path = _create_test_pdf(
-        "Test PDF document for RAG chatbot processing."
-    )
+    pdf_path = _create_test_pdf("Test PDF document for RAG chatbot processing.")
 
     try:
         payload = {

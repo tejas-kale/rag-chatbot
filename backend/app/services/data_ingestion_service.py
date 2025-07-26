@@ -87,13 +87,9 @@ class DataIngestionService:
             return self._process_pdf(data_source, metadata)
         # Add other source types here (e.g., "file", "url")
         else:
-            raise ValueError(
-                f"Unsupported data source type: {source_type}"
-            )
+            raise ValueError(f"Unsupported data source type: {source_type}")
 
-    def _process_text(
-        self, text: str, metadata: Optional[Dict] = None
-    ) -> bool:
+    def _process_text(self, text: str, metadata: Optional[Dict] = None) -> bool:
         """
         Process a text data source.
 
@@ -124,17 +120,13 @@ class DataIngestionService:
                 metadatas=metadatas,
             )
 
-            logger.info(
-                f"Successfully processed and stored {len(chunks)} text chunks."
-            )
+            logger.info(f"Successfully processed and stored {len(chunks)} text chunks.")
             return True
         except Exception as e:
             logger.error(f"Error processing text data: {e}", exc_info=True)
             return False
 
-    def _process_pdf(
-        self, pdf_path: str, metadata: Optional[Dict] = None
-    ) -> bool:
+    def _process_pdf(self, pdf_path: str, metadata: Optional[Dict] = None) -> bool:
         """
         Process a PDF file using PyPDFLoader.
 
@@ -155,9 +147,7 @@ class DataIngestionService:
                 return False
 
             # 2. Extract text content from documents
-            text_content = "\n".join(
-                [doc.page_content for doc in documents]
-            )
+            text_content = "\n".join([doc.page_content for doc in documents])
 
             if not text_content.strip():
                 logger.warning("PDF contains no extractable text content.")
@@ -195,7 +185,5 @@ class DataIngestionService:
             )
             return True
         except Exception as e:
-            logger.error(
-                f"Error processing PDF file {pdf_path}: {e}", exc_info=True
-            )
+            logger.error(f"Error processing PDF file {pdf_path}: {e}", exc_info=True)
             return False
