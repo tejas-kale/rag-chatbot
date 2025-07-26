@@ -8,7 +8,11 @@ including chunking, embedding, and storing the data in ChromaDB.
 import logging
 from typing import Dict, Optional, Union
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
+from langchain.text_splitter import (
+    RecursiveCharacterTextSplitter,
+    TextSplitter,
+)
+from langchain_community.document_loaders import PyPDFLoader
 
 from app.services.chromadb_service import ChromaDBService
 from app.services.embedding_service import (
@@ -67,7 +71,7 @@ class DataIngestionService:
 
         Args:
             data_source: The data to process (e.g., text, file path).
-            source_type: The type of the data source (e.g., "text", "file").
+            source_type: The type of the data source (e.g., "text", "pdf").
             metadata: Optional metadata to associate with the data.
 
         Returns:
@@ -79,6 +83,8 @@ class DataIngestionService:
         logger.info(f"Processing data source of type: {source_type}")
         if source_type == "text":
             return self._process_text(data_source, metadata)
+        elif source_type == "pdf":
+            return self._process_pdf(data_source, metadata)
         # Add other source types here (e.g., "file", "url")
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
@@ -118,4 +124,66 @@ class DataIngestionService:
             return True
         except Exception as e:
             logger.error(f"Error processing text data: {e}", exc_info=True)
+            return False
+
+    def _process_pdf(self, pdf_path: str, metadata: Optional[Dict] = None) -> bool:
+        """
+        Process a PDF file using PyPDFLoader.
+
+        Args:
+            pdf_path: Path to the PDF file to process.
+            metadata: Optional metadata to associate with the PDF content.
+
+        Returns:
+            True if processing was successful, False otherwise.
+        """
+        try:
+            # 1. Load PDF using PyPDFLoader
+            loader = PyPDFLoader(pdf_path)
+            documents = loader.load()
+
+            if not documents:
+                logger.warning("PDF loading resulted in no documents.")
+                return False
+
+            # 2. Extract text content from documents
+            text_content = "\n".join([doc.page_content for doc in documents])
+
+            if not text_content.strip():
+                logger.warning("PDF contains no extractable text content.")
+                return False
+
+            # 3. Combine metadata from loader with provided metadata
+            combined_metadata = metadata or {}
+            if documents:
+                # Add metadata from the first document (file info)
+                pdf_metadata = documents[0].metadata
+                combined_metadata.update(pdf_metadata)
+
+            # 4. Chunk the text using existing text splitter
+            chunks = self.text_splitter.split_text(text_content)
+            if not chunks:
+                logger.warning("Text splitting resulted in no chunks.")
+                return False
+
+            # 5. Create embeddings
+            embedding_model = self.embedding_factory.create_embedding_model()
+            embeddings = embedding_model.embed_documents(chunks)
+
+            # 6. Store in ChromaDB
+            metadatas = [combined_metadata] * len(chunks)
+            self.chromadb_service.add_documents(
+                collection_name=self.collection_name,
+                documents=chunks,
+                embeddings=embeddings,
+                metadatas=metadatas,
+            )
+
+            logger.info(
+                f"Successfully processed and stored {len(chunks)} PDF chunks "
+                f"from {pdf_path}."
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error processing PDF file {pdf_path}: {e}", exc_info=True)
             return False
