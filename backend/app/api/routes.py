@@ -277,13 +277,13 @@ def _is_allowed_file(filename, allowed_extensions=None):
 
     Args:
         filename: Name of the uploaded file
-        allowed_extensions: Set of allowed extensions (default: {'pdf'})
+        allowed_extensions: Set of allowed extensions (default: {'pdf', 'md'})
 
     Returns:
         bool: True if file extension is allowed
     """
     if allowed_extensions is None:
-        allowed_extensions = {"pdf"}
+        allowed_extensions = {"pdf", "md"}
 
     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
 
@@ -308,8 +308,23 @@ def _process_upload_async(task_id, file_path, original_filename):
             "task_id": task_id,
         }
 
-        # Process the PDF file using data ingestion service
-        success = data_ingestion_service.process_source(file_path, "pdf", metadata)
+        # Determine file type based on extension
+        file_extension = (
+            original_filename.rsplit(".", 1)[1].lower()
+            if "." in original_filename
+            else ""
+        )
+        if file_extension == "pdf":
+            source_type = "pdf"
+        elif file_extension == "md":
+            source_type = "markdown"
+        else:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+
+        # Process the file using data ingestion service
+        success = data_ingestion_service.process_source(
+            file_path, source_type, metadata
+        )
 
         # Update task status based on result
         if success:
@@ -332,11 +347,11 @@ def _process_upload_async(task_id, file_path, original_filename):
 
 
 @api_bp.route("/api/data_source/upload", methods=["POST"])
-def upload_pdf():
+def upload_file():
     """
-    Upload endpoint for PDF files.
+    Upload endpoint for PDF and Markdown files.
 
-    Accepts multipart/form-data with a PDF file and processes it
+    Accepts multipart/form-data with a PDF or Markdown file and processes it
     asynchronously for ingestion into the RAG system.
 
     Returns:
@@ -356,7 +371,13 @@ def upload_pdf():
         # Validate file type
         if not _is_allowed_file(file.filename):
             return (
-                jsonify({"error": "Invalid file type. Only PDF files are allowed"}),
+                jsonify(
+                    {
+                        "error": (
+                            "Invalid file type. Only PDF and Markdown files are allowed"
+                        )
+                    }
+                ),
                 400,
             )
 

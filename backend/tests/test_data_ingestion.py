@@ -93,8 +93,18 @@ def test_ingest_data_bad_request(client):
     assert response.json["error"] == "Missing source_type or data in request"
 
 
+def _create_test_markdown(
+    content="# Test Markdown\n\nThis is test markdown content for ingestion testing.",
+):
+    """Create a temporary Markdown file for testing."""
+    # Create temporary file
+    temp_file = tempfile.NamedTemporaryFile(suffix=".md", delete=False)
+    temp_file.write(content.encode())
+    temp_file.close()
+    return temp_file.name
+
+
 def _create_test_pdf(content="Test PDF content for ingestion testing."):
-    """Create a temporary PDF file for testing."""
     # Create a minimal valid PDF
     pdf_content = f"""%PDF-1.4
 1 0 obj
@@ -196,6 +206,57 @@ def test_ingest_pdf_failure(client, mock_data_ingestion_service):
     payload = {
         "source_type": "pdf",
         "data": pdf_path,
+    }
+    response = client.post(
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 500
+    assert response.json["error"] == "Failed to ingest data"
+
+
+def test_ingest_markdown_success(client, mock_data_ingestion_service):
+    """Test successful Markdown ingestion via the API."""
+    mock_data_ingestion_service.process_source.return_value = True
+
+    # Create a temporary test Markdown file
+    markdown_path = _create_test_markdown(
+        "# Test Markdown\n\nThis is a test document for RAG chatbot processing."
+    )
+
+    try:
+        payload = {
+            "source_type": "markdown",
+            "data": markdown_path,
+            "metadata": {"source": "test_markdown"},
+        }
+        response = client.post(
+            "/api/ingest",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        assert response.status_code == 200
+        assert response.json["message"] == "Data ingested successfully"
+        mock_data_ingestion_service.process_source.assert_called_once_with(
+            markdown_path, "markdown", {"source": "test_markdown"}
+        )
+    finally:
+        # Clean up temporary file
+        if os.path.exists(markdown_path):
+            os.unlink(markdown_path)
+
+
+def test_ingest_markdown_failure(client, mock_data_ingestion_service):
+    """Test failed Markdown ingestion via the API."""
+    mock_data_ingestion_service.process_source.return_value = False
+
+    # Use a non-existent Markdown path for testing failure
+    markdown_path = "/nonexistent/test.md"
+
+    payload = {
+        "source_type": "markdown",
+        "data": markdown_path,
     }
     response = client.post(
         "/api/ingest",
