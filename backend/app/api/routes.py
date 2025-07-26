@@ -4,6 +4,11 @@ Contains all route definitions organized as Flask blueprints.
 """
 
 import json
+import os
+import tempfile
+import threading
+import uuid
+from werkzeug.utils import secure_filename
 
 from flask import Blueprint, jsonify, request
 
@@ -22,6 +27,9 @@ persistence_manager = PersistenceManager()
 chromadb_service = ChromaDBService()
 embedding_factory = EmbeddingFactory()
 data_ingestion_service = DataIngestionService(chromadb_service, embedding_factory)
+
+# Track upload tasks - in production, use Redis or database
+upload_tasks = {}
 
 
 def _sanitize_settings_response(user_settings):
@@ -261,3 +269,157 @@ def ingest_data():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+def _is_allowed_file(filename, allowed_extensions=None):
+    """
+    Check if the uploaded file has an allowed extension.
+
+    Args:
+        filename: Name of the uploaded file
+        allowed_extensions: Set of allowed extensions (default: {'pdf'})
+
+    Returns:
+        bool: True if file extension is allowed
+    """
+    if allowed_extensions is None:
+        allowed_extensions = {"pdf"}
+
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
+
+
+def _process_upload_async(task_id, file_path, original_filename):
+    """
+    Process uploaded file asynchronously in background thread.
+
+    Args:
+        task_id: Unique task identifier
+        file_path: Path to the temporary uploaded file
+        original_filename: Original name of uploaded file
+    """
+    try:
+        # Update task status to processing
+        upload_tasks[task_id]["status"] = "processing"
+
+        # Add metadata about the uploaded file
+        metadata = {
+            "source_type": "upload",
+            "original_filename": original_filename,
+            "task_id": task_id,
+        }
+
+        # Process the PDF file using data ingestion service
+        success = data_ingestion_service.process_source(file_path, "pdf", metadata)
+
+        # Update task status based on result
+        if success:
+            upload_tasks[task_id]["status"] = "completed"
+            upload_tasks[task_id]["message"] = "File processed successfully"
+        else:
+            upload_tasks[task_id]["status"] = "failed"
+            upload_tasks[task_id]["message"] = "Failed to process file"
+
+    except Exception as e:
+        upload_tasks[task_id]["status"] = "failed"
+        upload_tasks[task_id]["message"] = f"Processing error: {str(e)}"
+    finally:
+        # Clean up temporary file
+        try:
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+        except Exception as e:
+            print(f"Warning: Could not delete temporary file {file_path}: {e}")
+
+
+@api_bp.route("/api/data_source/upload", methods=["POST"])
+def upload_pdf():
+    """
+    Upload endpoint for PDF files.
+
+    Accepts multipart/form-data with a PDF file and processes it
+    asynchronously for ingestion into the RAG system.
+
+    Returns:
+        JSON response with task_id and processing status
+    """
+    try:
+        # Check if file is present in request
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files["file"]
+
+        # Check if file was actually selected
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+
+        # Validate file type
+        if not _is_allowed_file(file.filename):
+            return (
+                jsonify({"error": "Invalid file type. Only PDF files are allowed"}),
+                400,
+            )
+
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+
+        # Secure the filename
+        filename = secure_filename(file.filename)
+        if not filename:
+            filename = f"upload_{task_id}.pdf"
+
+        # Create temporary file
+        temp_dir = tempfile.gettempdir()
+        temp_file_path = os.path.join(temp_dir, f"{task_id}_{filename}")
+
+        # Save uploaded file to temporary location
+        file.save(temp_file_path)
+
+        # Initialize task tracking
+        upload_tasks[task_id] = {
+            "status": "queued",
+            "filename": filename,
+            "task_id": task_id,
+            "message": "File uploaded, processing queued",
+        }
+
+        # Start async processing in background thread
+        processing_thread = threading.Thread(
+            target=_process_upload_async, args=(task_id, temp_file_path, filename)
+        )
+        processing_thread.daemon = True
+        processing_thread.start()
+
+        # Return immediate response with task ID
+        return (
+            jsonify(
+                {
+                    "task_id": task_id,
+                    "status": "processing",
+                    "message": "File uploaded successfully, processing started",
+                    "filename": filename,
+                }
+            ),
+            202,
+        )
+
+    except Exception as e:
+        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+
+
+@api_bp.route("/api/data_source/upload/status/<task_id>", methods=["GET"])
+def get_upload_status(task_id):
+    """
+    Get the status of an upload task.
+
+    Args:
+        task_id: The unique task identifier
+
+    Returns:
+        JSON response with task status and details
+    """
+    if task_id not in upload_tasks:
+        return jsonify({"error": "Task not found"}), 404
+
+    task_info = upload_tasks[task_id]
+    return jsonify(task_info)
