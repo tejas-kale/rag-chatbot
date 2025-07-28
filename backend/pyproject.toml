@@ -16,6 +16,7 @@ dependencies = [
     "langchain-huggingface>=0.3.0",
     "pypdf>=5.8.0",
     "reportlab>=4.4.3",
+    "tokenizers==0.21.2",
 ]
 
 [dependency-groups]
@@ -25,6 +26,3 @@ dev = [
     "black",
     "flake8",
 ]
-
-[tool.uv]
-required-environments = ["manylinux_2_39_x86_64"]
