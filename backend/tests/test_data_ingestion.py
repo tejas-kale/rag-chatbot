@@ -265,3 +265,43 @@ def test_ingest_markdown_failure(client, mock_data_ingestion_service):
     )
     assert response.status_code == 500
     assert response.json["error"] == "Failed to ingest data"
+
+
+def test_ingest_url_success(client, mock_data_ingestion_service):
+    """Test successful URL ingestion via the API."""
+    mock_data_ingestion_service.process_source.return_value = True
+
+    test_url = "https://example.com/article"
+    payload = {
+        "source_type": "url",
+        "data": test_url,
+        "metadata": {"source": "test_url"},
+    }
+    response = client.post(
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.json["message"] == "Data ingested successfully"
+    mock_data_ingestion_service.process_source.assert_called_once_with(
+        test_url, "url", {"source": "test_url"}
+    )
+
+
+def test_ingest_url_failure(client, mock_data_ingestion_service):
+    """Test failed URL ingestion via the API."""
+    mock_data_ingestion_service.process_source.return_value = False
+
+    test_url = "https://invalid-url-that-does-not-exist.com"
+    payload = {
+        "source_type": "url",
+        "data": test_url,
+    }
+    response = client.post(
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 500
+    assert response.json["error"] == "Failed to ingest data"

@@ -12,7 +12,11 @@ from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     TextSplitter,
 )
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.document_loaders import (
+    PyPDFLoader,
+    TextLoader,
+    UnstructuredURLLoader,
+)
 
 from app.services.chromadb_service import ChromaDBService
 from app.services.embedding_service import (
@@ -70,8 +74,9 @@ class DataIngestionService:
         Process a data source based on its type.
 
         Args:
-            data_source: The data to process (e.g., text, file path).
-            source_type: The type of the data source (e.g., "text", "pdf").
+            data_source: The data to process (e.g., text, file path, URL).
+            source_type: The type of the data source (e.g., "text", "pdf",
+                "markdown", "url").
             metadata: Optional metadata to associate with the data.
 
         Returns:
@@ -87,7 +92,9 @@ class DataIngestionService:
             return self._process_pdf(data_source, metadata)
         elif source_type == "markdown":
             return self._process_markdown(data_source, metadata)
-        # Add other source types here (e.g., "file", "url")
+        elif source_type == "url":
+            return self._process_url(data_source, metadata)
+        # Add other source types here (e.g., "file")
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
 
@@ -236,4 +243,46 @@ class DataIngestionService:
             logger.error(
                 f"Error processing Markdown file {markdown_path}: {e}", exc_info=True
             )
+            return False
+
+    def _process_url(self, url: str, metadata: Optional[Dict] = None) -> bool:
+        """
+        Process a web article URL using UnstructuredURLLoader.
+
+        Args:
+            url: The URL to fetch and process.
+            metadata: Optional metadata to associate with the URL content.
+
+        Returns:
+            True if processing was successful, False otherwise.
+        """
+        try:
+            # 1. Load URL content using UnstructuredURLLoader
+            loader = UnstructuredURLLoader(urls=[url])
+            documents = loader.load()
+
+            if not documents:
+                logger.warning("URL loading resulted in no documents.")
+                return False
+
+            # 2. Extract text content from documents
+            text_content = "\n".join([doc.page_content for doc in documents])
+
+            if not text_content.strip():
+                logger.warning("URL contains no extractable text content.")
+                return False
+
+            # 3. Combine metadata from loader with provided metadata
+            combined_metadata = metadata or {}
+            if documents:
+                # Add metadata from the first document (URL info)
+                url_metadata = documents[0].metadata
+                combined_metadata.update(url_metadata)
+
+            # 4. Use common method for chunking, embedding, and storing
+            return self._chunk_embed_and_store(
+                text_content, combined_metadata, f"URL chunks from {url}"
+            )
+        except Exception as e:
+            logger.error(f"Error processing URL {url}: {e}", exc_info=True)
             return False
