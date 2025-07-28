@@ -44,7 +44,7 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
     - Command: `uv run black app/ tests/ scripts/`
     - Ensure all code follows consistent formatting standards
   - ALL flake8 warnings must be corrected before committing
-    - Command: `uv run flake8 app/ tests/ scripts/`
+    - Command: `uv run flake8 app/ tests/ scripts/ --max-line-length=88 --extend-ignore=E203,W503`
     - Maintain code quality and adhere to PEP 8 standards
 
 ### LangChain Integration
@@ -113,19 +113,6 @@ This is a RAG (Retrieval-Augmented Generation) chatbot application built with a 
 - Use pull requests for code review
 - Keep commits atomic and focused on single changes
 - Write descriptive commit messages
-
-### Code Formatting and Linting (REQUIRED)
-- **ALWAYS run Black formatter before committing any Python code changes**
-  - Command: `uv run black app/ tests/ scripts/`
-  - Ensure all code follows consistent formatting standards
-- **ALWAYS run isort import sorter before committing any Python code changes**
-  - Command: `uv run isort app/ tests/ scripts/`
-  - Maintain consistent import organization and ordering
-- **ALWAYS verify formatting compliance before committing**
-  - Check command: `uv run black --check --diff app/ tests/ scripts/`
-  - Check command: `uv run isort --check-only --diff app/ tests/ scripts/`
-- These tools are integrated into CI/CD pipeline and must pass for PR approval
-- Use the same commands that are used in GitHub Actions workflow
 
 ### Testing
 - Write unit tests for all business logic

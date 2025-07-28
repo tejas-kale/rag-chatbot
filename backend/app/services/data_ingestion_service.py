@@ -12,7 +12,7 @@ from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     TextSplitter,
 )
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
 
 from app.services.chromadb_service import ChromaDBService
 from app.services.embedding_service import (
@@ -85,9 +85,53 @@ class DataIngestionService:
             return self._process_text(data_source, metadata)
         elif source_type == "pdf":
             return self._process_pdf(data_source, metadata)
+        elif source_type == "markdown":
+            return self._process_markdown(data_source, metadata)
         # Add other source types here (e.g., "file", "url")
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
+
+    def _chunk_embed_and_store(
+        self,
+        text_content: str,
+        metadata: Optional[Dict] = None,
+        source_description: str = "data",
+    ) -> bool:
+        """
+        Common method to chunk text, create embeddings, and store in ChromaDB.
+
+        Args:
+            text_content: The text content to process
+            metadata: Optional metadata to associate with the chunks
+            source_description: Description for logging purposes
+
+        Returns:
+            True if processing was successful, False otherwise
+        """
+        # 1. Chunk the text
+        chunks = self.text_splitter.split_text(text_content)
+        if not chunks:
+            logger.warning("Text splitting resulted in no chunks.")
+            return False
+
+        # 2. Create embeddings
+        embedding_model = self.embedding_factory.create_embedding_model()
+        embeddings = embedding_model.embed_documents(chunks)
+
+        # 3. Store in ChromaDB
+        metadatas = [metadata or {}] * len(chunks)
+        self.chromadb_service.add_documents(
+            collection_name=self.collection_name,
+            documents=chunks,
+            embeddings=embeddings,
+            metadatas=metadatas,
+        )
+
+        logger.info(
+            f"Successfully processed and stored {len(chunks)} "
+            f"{source_description} chunks."
+        )
+        return True
 
     def _process_text(self, text: str, metadata: Optional[Dict] = None) -> bool:
         """
@@ -101,27 +145,7 @@ class DataIngestionService:
             True if processing was successful, False otherwise.
         """
         try:
-            # 1. Chunk the text
-            chunks = self.text_splitter.split_text(text)
-            if not chunks:
-                logger.warning("Text splitting resulted in no chunks.")
-                return False
-
-            # 2. Create embeddings
-            embedding_model = self.embedding_factory.create_embedding_model()
-            embeddings = embedding_model.embed_documents(chunks)
-
-            # 3. Store in ChromaDB
-            metadatas = [metadata or {}] * len(chunks)
-            self.chromadb_service.add_documents(
-                collection_name=self.collection_name,
-                documents=chunks,
-                embeddings=embeddings,
-                metadatas=metadatas,
-            )
-
-            logger.info(f"Successfully processed and stored {len(chunks)} text chunks.")
-            return True
+            return self._chunk_embed_and_store(text, metadata, "text")
         except Exception as e:
             logger.error(f"Error processing text data: {e}", exc_info=True)
             return False
@@ -160,30 +184,56 @@ class DataIngestionService:
                 pdf_metadata = documents[0].metadata
                 combined_metadata.update(pdf_metadata)
 
-            # 4. Chunk the text using existing text splitter
-            chunks = self.text_splitter.split_text(text_content)
-            if not chunks:
-                logger.warning("Text splitting resulted in no chunks.")
-                return False
-
-            # 5. Create embeddings
-            embedding_model = self.embedding_factory.create_embedding_model()
-            embeddings = embedding_model.embed_documents(chunks)
-
-            # 6. Store in ChromaDB
-            metadatas = [combined_metadata] * len(chunks)
-            self.chromadb_service.add_documents(
-                collection_name=self.collection_name,
-                documents=chunks,
-                embeddings=embeddings,
-                metadatas=metadatas,
+            # 4. Use common method for chunking, embedding, and storing
+            return self._chunk_embed_and_store(
+                text_content, combined_metadata, f"PDF chunks from {pdf_path}"
             )
-
-            logger.info(
-                f"Successfully processed and stored {len(chunks)} PDF chunks "
-                f"from {pdf_path}."
-            )
-            return True
         except Exception as e:
             logger.error(f"Error processing PDF file {pdf_path}: {e}", exc_info=True)
+            return False
+
+    def _process_markdown(
+        self, markdown_path: str, metadata: Optional[Dict] = None
+    ) -> bool:
+        """
+        Process a Markdown file using TextLoader.
+
+        Args:
+            markdown_path: Path to the Markdown file to process.
+            metadata: Optional metadata to associate with the Markdown content.
+
+        Returns:
+            True if processing was successful, False otherwise.
+        """
+        try:
+            # 1. Load Markdown using TextLoader
+            loader = TextLoader(markdown_path)
+            documents = loader.load()
+
+            if not documents:
+                logger.warning("Markdown loading resulted in no documents.")
+                return False
+
+            # 2. Extract text content from documents
+            text_content = "\n".join([doc.page_content for doc in documents])
+
+            if not text_content.strip():
+                logger.warning("Markdown file contains no extractable text content.")
+                return False
+
+            # 3. Combine metadata from loader with provided metadata
+            combined_metadata = metadata or {}
+            if documents:
+                # Add metadata from the first document (file info)
+                markdown_metadata = documents[0].metadata
+                combined_metadata.update(markdown_metadata)
+
+            # 4. Use common method for chunking, embedding, and storing
+            return self._chunk_embed_and_store(
+                text_content, combined_metadata, f"Markdown chunks from {markdown_path}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Error processing Markdown file {markdown_path}: {e}", exc_info=True
+            )
             return False
