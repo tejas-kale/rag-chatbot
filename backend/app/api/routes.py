@@ -288,6 +288,28 @@ def _is_allowed_file(filename, allowed_extensions=None):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in allowed_extensions
 
 
+def _determine_file_type(filename):
+    """
+    Determine the source type based on file extension.
+
+    Args:
+        filename: Name of the file to analyze
+
+    Returns:
+        str: Source type ('pdf', 'markdown')
+
+    Raises:
+        ValueError: If file type is unsupported
+    """
+    file_extension = filename.rsplit(".", 1)[1].lower() if "." in filename else ""
+    if file_extension == "pdf":
+        return "pdf"
+    elif file_extension == "md":
+        return "markdown"
+    else:
+        raise ValueError(f"Unsupported file type: {file_extension}")
+
+
 def _process_upload_async(task_id, file_path, original_filename):
     """
     Process uploaded file asynchronously in background thread.
@@ -309,17 +331,7 @@ def _process_upload_async(task_id, file_path, original_filename):
         }
 
         # Determine file type based on extension
-        file_extension = (
-            original_filename.rsplit(".", 1)[1].lower()
-            if "." in original_filename
-            else ""
-        )
-        if file_extension == "pdf":
-            source_type = "pdf"
-        elif file_extension == "md":
-            source_type = "markdown"
-        else:
-            raise ValueError(f"Unsupported file type: {file_extension}")
+        source_type = _determine_file_type(original_filename)
 
         # Process the file using data ingestion service
         success = data_ingestion_service.process_source(
