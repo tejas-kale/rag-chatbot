@@ -305,3 +305,43 @@ def test_ingest_url_failure(client, mock_data_ingestion_service):
     )
     assert response.status_code == 500
     assert response.json["error"] == "Failed to ingest data"
+
+
+def test_ingest_youtube_success(client, mock_data_ingestion_service):
+    """Test successful YouTube ingestion via the API."""
+    mock_data_ingestion_service.process_source.return_value = True
+
+    test_youtube_url = "https://youtube.com/watch?v=dQw4w9WgXcQ"
+    payload = {
+        "source_type": "youtube",
+        "data": test_youtube_url,
+        "metadata": {"source": "test_youtube"},
+    }
+    response = client.post(
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.json["message"] == "Data ingested successfully"
+    mock_data_ingestion_service.process_source.assert_called_once_with(
+        test_youtube_url, "youtube", {"source": "test_youtube"}
+    )
+
+
+def test_ingest_youtube_failure(client, mock_data_ingestion_service):
+    """Test failed YouTube ingestion via the API."""
+    mock_data_ingestion_service.process_source.return_value = False
+
+    test_youtube_url = "https://youtube.com/watch?v=invalid"
+    payload = {
+        "source_type": "youtube",
+        "data": test_youtube_url,
+    }
+    response = client.post(
+        "/api/ingest",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 500
+    assert response.json["error"] == "Failed to ingest data"
