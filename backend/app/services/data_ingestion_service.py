@@ -22,6 +22,7 @@ from app.services.chromadb_service import ChromaDBService
 from app.services.embedding_service import (
     EmbeddingFactory,
 )
+from app.services.youtube_downloader_service import YouTubeDownloaderService
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class DataIngestionService:
         chromadb_service: ChromaDBService,
         embedding_factory: EmbeddingFactory,
         collection_name: str = "default_collection",
+        youtube_download_dir: str = "downloads/audio",
     ):
         """
         Initialize the DataIngestionService.
@@ -45,11 +47,13 @@ class DataIngestionService:
             chromadb_service: Instance of ChromaDBService.
             embedding_factory: Instance of EmbeddingFactory.
             collection_name: Name of the ChromaDB collection to use.
+            youtube_download_dir: Directory for YouTube audio downloads.
         """
         self.chromadb_service = chromadb_service
         self.embedding_factory = embedding_factory
         self.collection_name = collection_name
         self.text_splitter = self._create_text_splitter()
+        self.youtube_downloader = YouTubeDownloaderService(youtube_download_dir)
 
     def _create_text_splitter(self) -> TextSplitter:
         """
@@ -76,7 +80,7 @@ class DataIngestionService:
         Args:
             data_source: The data to process (e.g., text, file path, URL).
             source_type: The type of the data source (e.g., "text", "pdf",
-                "markdown", "url").
+                "markdown", "url", "youtube").
             metadata: Optional metadata to associate with the data.
 
         Returns:
@@ -94,6 +98,8 @@ class DataIngestionService:
             return self._process_markdown(data_source, metadata)
         elif source_type == "url":
             return self._process_url(data_source, metadata)
+        elif source_type == "youtube":
+            return self._process_youtube(data_source, metadata)
         # Add other source types here (e.g., "file")
         else:
             raise ValueError(f"Unsupported data source type: {source_type}")
@@ -285,4 +291,65 @@ class DataIngestionService:
             )
         except Exception as e:
             logger.error(f"Error processing URL {url}: {e}", exc_info=True)
+            return False
+
+    def _process_youtube(
+        self, youtube_url: str, metadata: Optional[Dict] = None
+    ) -> bool:
+        """
+        Process a YouTube URL by downloading audio and storing metadata.
+
+        Note: This method downloads the audio file but does not process the
+        audio content for embeddings. It stores metadata about the YouTube
+        video for retrieval purposes.
+
+        Args:
+            youtube_url: The YouTube URL to process.
+            metadata: Optional metadata to associate with the YouTube content.
+
+        Returns:
+            True if processing was successful, False otherwise.
+        """
+        try:
+            # 1. Validate YouTube URL
+            if not self.youtube_downloader.is_youtube_url(youtube_url):
+                logger.error(f"Invalid YouTube URL: {youtube_url}")
+                return False
+
+            # 2. Download audio file
+            downloaded_file_path = self.youtube_downloader.download_audio(youtube_url)
+            if not downloaded_file_path:
+                logger.error(f"Failed to download audio from: {youtube_url}")
+                return False
+
+            # 3. Create metadata for the YouTube video
+            combined_metadata = metadata or {}
+            combined_metadata.update(
+                {
+                    "source_type": "youtube",
+                    "youtube_url": youtube_url,
+                    "audio_file_path": downloaded_file_path,
+                    "content_type": "audio/mp3",
+                }
+            )
+
+            # 4. For now, store just the URL and metadata as text content
+            # Future enhancement: transcribe audio to text for embedding
+            text_content = f"YouTube video: {youtube_url}"
+
+            # 5. Use common method for chunking, embedding, and storing
+            success = self._chunk_embed_and_store(
+                text_content, combined_metadata, f"YouTube content from {youtube_url}"
+            )
+
+            if success:
+                logger.info(f"Successfully processed YouTube URL: {youtube_url}")
+                logger.info(f"Audio file saved at: {downloaded_file_path}")
+
+            return success
+
+        except Exception as e:
+            logger.error(
+                f"Error processing YouTube URL {youtube_url}: {e}", exc_info=True
+            )
             return False

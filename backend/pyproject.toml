@@ -18,6 +18,7 @@ dependencies = [
     "reportlab>=4.4.3",
     "tokenizers==0.21.2",
     "unstructured[html]>=0.18.11",
+    "yt-dlp>=2024.1.0",
 ]
 
 [dependency-groups]
