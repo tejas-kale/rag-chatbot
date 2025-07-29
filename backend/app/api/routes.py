@@ -358,6 +358,56 @@ def _process_upload_async(task_id, file_path, original_filename):
             print(f"Warning: Could not delete temporary file {file_path}: {e}")
 
 
+def _process_data_source_async(task_id, source_type, source_value):
+    """
+    Process data source asynchronously in background thread.
+
+    Args:
+        task_id: Unique task identifier
+        source_type: Type of data source (url, markdown, etc.)
+        source_value: The actual data source (URL string, markdown content, etc.)
+    """
+    try:
+        # Update task status to processing
+        upload_tasks[task_id]["status"] = "processing"
+
+        # Add metadata about the data source
+        metadata = {
+            "source_type": source_type,
+            "task_id": task_id,
+        }
+
+        # Determine the actual processing type based on source_type and source_value
+        processing_type = source_type
+        processing_value = source_value
+
+        # For URL type, detect if it's a YouTube URL
+        if source_type == "url":
+            if "youtube.com" in source_value or "youtu.be" in source_value:
+                processing_type = "youtube"
+            # else: keep as "url" for general web article processing
+        elif source_type == "markdown":
+            # For markdown content via API, treat as text instead of file
+            processing_type = "text"
+
+        # Process the data source using data ingestion service
+        success = data_ingestion_service.process_source(
+            processing_value, processing_type, metadata
+        )
+
+        # Update task status based on result
+        if success:
+            upload_tasks[task_id]["status"] = "completed"
+            upload_tasks[task_id]["message"] = "Data source processed successfully"
+        else:
+            upload_tasks[task_id]["status"] = "failed"
+            upload_tasks[task_id]["message"] = "Failed to process data source"
+
+    except Exception as e:
+        upload_tasks[task_id]["status"] = "failed"
+        upload_tasks[task_id]["message"] = f"Processing error: {str(e)}"
+
+
 @api_bp.route("/api/data_source/upload", methods=["POST"])
 def upload_file():
     """
@@ -440,10 +490,126 @@ def upload_file():
         return jsonify({"error": f"Upload failed: {str(e)}"}), 500
 
 
+@api_bp.route("/api/data_source/add", methods=["POST"])
+def add_data_source():
+    """
+    Add data source endpoint for URLs and Markdown content.
+
+    Accepts JSON payload with data source information and processes it
+    asynchronously for ingestion into the RAG system.
+
+    Expected JSON format:
+        {"type": "url", "value": "http://example.com"}
+        {"type": "markdown", "value": "# Markdown content..."}
+
+    Returns:
+        JSON response with task_id and processing status
+    """
+    try:
+        # Get JSON data from request
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            # Handle both malformed JSON and missing content-type
+            if "Content-Type" in str(e):
+                return jsonify({"error": "No JSON data provided"}), 400
+            else:
+                return jsonify({"error": "Invalid JSON format"}), 400
+
+        # Validate request format
+        if data is None:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        if "type" not in data or "value" not in data:
+            return jsonify({"error": "Missing 'type' or 'value' field in request"}), 400
+
+        source_type = data["type"]
+        source_value = data["value"]
+
+        # Validate source type
+        allowed_types = {"url", "markdown"}
+        if source_type not in allowed_types:
+            allowed_types_str = ", ".join(allowed_types)
+            error_msg = f"Invalid source type. Allowed types: {allowed_types_str}"
+            return jsonify({"error": error_msg}), 400
+
+        # Validate source value
+        if (
+            not source_value
+            or not isinstance(source_value, str)
+            or not source_value.strip()
+        ):
+            return jsonify({"error": "Source value must be a non-empty string"}), 400
+
+        # Additional validation for URL type
+        if source_type == "url":
+            if not (
+                source_value.startswith("http://")
+                or source_value.startswith("https://")
+            ):
+                return (
+                    jsonify({"error": "URL must start with http:// or https://"}),
+                    400,
+                )
+
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+
+        # Initialize task tracking
+        upload_tasks[task_id] = {
+            "status": "queued",
+            "source_type": source_type,
+            "source_value": source_value,
+            "task_id": task_id,
+            "message": "Data source queued for processing",
+        }
+
+        # Start async processing in background thread
+        processing_thread = threading.Thread(
+            target=_process_data_source_async, args=(task_id, source_type, source_value)
+        )
+        processing_thread.daemon = True
+        processing_thread.start()
+
+        # Return immediate response with task ID
+        return (
+            jsonify(
+                {
+                    "task_id": task_id,
+                    "status": "processing",
+                    "message": "Data source added successfully, processing started",
+                    "source_type": source_type,
+                }
+            ),
+            202,
+        )
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to add data source: {str(e)}"}), 500
+
+
 @api_bp.route("/api/data_source/upload/status/<task_id>", methods=["GET"])
 def get_upload_status(task_id):
     """
     Get the status of an upload task.
+
+    Args:
+        task_id: The unique task identifier
+
+    Returns:
+        JSON response with task status and details
+    """
+    if task_id not in upload_tasks:
+        return jsonify({"error": "Task not found"}), 404
+
+    task_info = upload_tasks[task_id]
+    return jsonify(task_info)
+
+
+@api_bp.route("/api/data_source/status/<task_id>", methods=["GET"])
+def get_data_source_status(task_id):
+    """
+    Get the status of a data source processing task.
 
     Args:
         task_id: The unique task identifier
