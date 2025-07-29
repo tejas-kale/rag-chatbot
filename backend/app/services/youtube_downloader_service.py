@@ -1,15 +1,16 @@
 """
-YouTube audio downloader service using yt-dlp subprocess.
+YouTube audio downloader service using yt-dlp Python interface.
 
 This service provides functionality to download audio tracks from YouTube URLs
-as MP3 files using yt-dlp as a subprocess.
+as MP3 files using yt-dlp's Python API.
 """
 
 import logging
-import subprocess
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
+
+import yt_dlp
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class YouTubeDownloaderService:
     """
-    Service for downloading audio from YouTube URLs using yt-dlp.
+    Service for downloading audio from YouTube URLs using yt-dlp Python API.
     """
 
     def __init__(self, download_directory: str = "downloads/audio"):
@@ -29,6 +30,7 @@ class YouTubeDownloaderService:
         """
         self.download_directory = Path(download_directory)
         self.download_directory.mkdir(parents=True, exist_ok=True)
+        self.downloaded_file_path = None  # Track the last downloaded file
 
     def is_youtube_url(self, url: str) -> bool:
         """
@@ -53,7 +55,7 @@ class YouTubeDownloaderService:
 
     def download_audio(self, youtube_url: str) -> Optional[str]:
         """
-        Download audio from a YouTube URL as MP3.
+        Download audio from a YouTube URL as MP3 using yt-dlp Python API.
 
         Args:
             youtube_url: The YouTube URL to download audio from.
@@ -63,95 +65,86 @@ class YouTubeDownloaderService:
 
         Raises:
             ValueError: If the URL is not a valid YouTube URL.
-            RuntimeError: If yt-dlp subprocess fails.
+            RuntimeError: If yt-dlp download fails.
         """
         if not self.is_youtube_url(youtube_url):
             raise ValueError(f"Invalid YouTube URL: {youtube_url}")
 
         logger.info(f"Starting audio download from: {youtube_url}")
 
-        # Construct yt-dlp command
+        # Reset the downloaded file tracker
+        self.downloaded_file_path = None
+
+        # Configure yt-dlp options
         output_template = str(self.download_directory / "%(title)s.%(ext)s")
-        cmd = [
-            "yt-dlp",
-            "--extract-audio",
-            "--audio-format",
-            "mp3",
-            "--audio-quality",
-            "192K",
-            "--output",
-            output_template,
-            "--no-playlist",
-            "--restrict-filenames",
-            youtube_url,
-        ]
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ],
+            "outtmpl": output_template,
+            "noplaylist": True,
+            "restrictfilenames": True,
+            "quiet": True,  # Reduce verbose output
+            "no_warnings": False,
+        }
 
         try:
-            # Run yt-dlp subprocess
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=300,  # 5 minutes timeout
-                check=True,
-            )
+            # Add progress hook to track downloaded file
+            ydl_opts["postprocessor_hooks"] = [self._postprocessor_hook]
 
-            logger.info("yt-dlp subprocess completed successfully")
-            logger.debug(f"yt-dlp stdout: {result.stdout}")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Download the audio
+                ydl.download([youtube_url])
 
-            # Find the downloaded file
-            downloaded_file = self._find_downloaded_file(result.stdout)
-            if downloaded_file and downloaded_file.exists():
-                logger.info(f"Audio downloaded successfully: {downloaded_file}")
-                return str(downloaded_file)
-            else:
-                logger.error("Downloaded file not found after yt-dlp execution")
-                return None
+                # Return the downloaded file path if available
+                if self.downloaded_file_path and self.downloaded_file_path.exists():
+                    logger.info(
+                        f"Audio downloaded successfully: {self.downloaded_file_path}"
+                    )
+                    return str(self.downloaded_file_path)
+                else:
+                    # Fallback: find the most recently created MP3 file
+                    downloaded_file = self._find_newest_mp3_file()
+                    if downloaded_file:
+                        logger.info(f"Audio downloaded successfully: {downloaded_file}")
+                        return str(downloaded_file)
+                    else:
+                        logger.error("Downloaded file not found after yt-dlp execution")
+                        return None
 
-        except subprocess.TimeoutExpired:
-            logger.error(f"yt-dlp subprocess timed out for URL: {youtube_url}")
-            raise RuntimeError(f"Download timed out for URL: {youtube_url}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"yt-dlp subprocess failed: {e.stderr}")
-            raise RuntimeError(f"yt-dlp failed: {e.stderr}")
-        except FileNotFoundError:
-            logger.error("yt-dlp not found. Please install yt-dlp.")
-            raise RuntimeError("yt-dlp not found. Please install yt-dlp.")
+        except yt_dlp.utils.DownloadError as e:
+            logger.error(f"yt-dlp download failed: {e}")
+            raise RuntimeError(f"yt-dlp download failed: {e}")
         except Exception as e:
             logger.error(f"Unexpected error during download: {e}", exc_info=True)
             raise RuntimeError(f"Unexpected error during download: {e}")
 
-    def _find_downloaded_file(self, yt_dlp_output: str) -> Optional[Path]:
+    def _postprocessor_hook(self, d):
         """
-        Parse yt-dlp output to find the downloaded file path.
+        Hook called by yt-dlp after post-processing (audio extraction).
 
         Args:
-            yt_dlp_output: stdout from yt-dlp command.
+            d: Dictionary containing post-processor information.
+        """
+        if d["status"] == "finished":
+            self.downloaded_file_path = Path(d["filepath"])
+            logger.debug(f"Post-processing finished: {self.downloaded_file_path}")
+
+    def _find_newest_mp3_file(self) -> Optional[Path]:
+        """
+        Find the most recently created MP3 file in the download directory.
 
         Returns:
-            Path to the downloaded file if found, None otherwise.
+            Path to the newest MP3 file if found, None otherwise.
         """
-        for line in yt_dlp_output.split("\n"):
-            if "has already been downloaded" in line or "Destination:" in line:
-                # Extract filename from various yt-dlp output formats
-                if "]" in line and self.download_directory.name in line:
-                    filename_part = line.split("]")[-1].strip()
-                    # Remove "Destination: " prefix if present
-                    if filename_part.startswith("Destination: "):
-                        filename_part = filename_part[len("Destination: ") :].strip()
-
-                    # Handle case where full path is in output
-                    if str(self.download_directory) in filename_part:
-                        return Path(filename_part)
-                    else:
-                        return self.download_directory / filename_part
-
-        # Fallback: look for .mp3 files in download directory
         mp3_files = list(self.download_directory.glob("*.mp3"))
         if mp3_files:
-            # Return the most recently modified file
             return max(mp3_files, key=lambda f: f.stat().st_mtime)
-
         return None
 
     def cleanup_file(self, file_path: str) -> bool:

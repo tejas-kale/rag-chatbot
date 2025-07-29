@@ -2,11 +2,14 @@
 Test module for YouTube downloader service.
 """
 
+import shutil
 import tempfile
+import time
 import unittest.mock
 from pathlib import Path
 
 import pytest
+import yt_dlp
 
 from app.services.youtube_downloader_service import YouTubeDownloaderService
 
@@ -22,8 +25,6 @@ class TestYouTubeDownloaderService:
     def teardown_method(self):
         """Clean up test environment."""
         # Clean up temp directory
-        import shutil
-
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_init_creates_download_directory(self):
@@ -61,105 +62,80 @@ class TestYouTubeDownloaderService:
         with pytest.raises(ValueError, match="Invalid YouTube URL"):
             self.service.download_audio("https://example.com")
 
-    @unittest.mock.patch("subprocess.run")
-    def test_download_audio_subprocess_success(self, mock_run):
-        """Test successful audio download via subprocess."""
+    @unittest.mock.patch("yt_dlp.YoutubeDL")
+    def test_download_audio_success(self, mock_ydl_class):
+        """Test successful audio download via yt-dlp Python API."""
         # Setup mock
-        mock_run.return_value.stdout = "[download] Destination: test_audio.mp3"
-        mock_run.return_value.returncode = 0
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.download.return_value = None
 
         # Create a mock downloaded file
         test_file = self.service.download_directory / "test_audio.mp3"
         test_file.touch()
 
+        # Mock the postprocessor hook to simulate file creation
+        def mock_download(urls):
+            self.service.downloaded_file_path = test_file
+
+        mock_ydl.download.side_effect = mock_download
+
         # Test
         result = self.service.download_audio("https://youtube.com/watch?v=test")
 
-        # Verify subprocess was called with correct arguments
-        mock_run.assert_called_once()
-        call_args = mock_run.call_args[0][0]
-        assert "yt-dlp" in call_args
-        assert "--extract-audio" in call_args
-        assert "--audio-format" in call_args
-        assert "mp3" in call_args
-        assert "https://youtube.com/watch?v=test" in call_args
+        # Verify yt-dlp was called
+        mock_ydl_class.assert_called_once()
+        mock_ydl.download.assert_called_once_with(["https://youtube.com/watch?v=test"])
 
         # Verify result
         assert result == str(test_file)
 
-    @unittest.mock.patch("subprocess.run")
-    def test_download_audio_subprocess_timeout(self, mock_run):
-        """Test subprocess timeout handling."""
-        import subprocess
-
-        mock_run.side_effect = subprocess.TimeoutExpired("yt-dlp", 300)
-
-        with pytest.raises(RuntimeError, match="Download timed out"):
-            self.service.download_audio("https://youtube.com/watch?v=test")
-
-    @unittest.mock.patch("subprocess.run")
-    def test_download_audio_subprocess_error(self, mock_run):
-        """Test subprocess error handling."""
-        import subprocess
-
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "yt-dlp", stderr="Error downloading video"
+    @unittest.mock.patch("yt_dlp.YoutubeDL")
+    def test_download_audio_yt_dlp_error(self, mock_ydl_class):
+        """Test yt-dlp download error handling."""
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.download.side_effect = yt_dlp.utils.DownloadError(
+            "Error downloading video"
         )
 
-        with pytest.raises(RuntimeError, match="yt-dlp failed"):
+        with pytest.raises(RuntimeError, match="yt-dlp download failed"):
             self.service.download_audio("https://youtube.com/watch?v=test")
 
-    @unittest.mock.patch("subprocess.run")
-    def test_download_audio_file_not_found_error(self, mock_run):
-        """Test handling when yt-dlp is not installed."""
-        mock_run.side_effect = FileNotFoundError()
-
-        with pytest.raises(RuntimeError, match="yt-dlp not found"):
-            self.service.download_audio("https://youtube.com/watch?v=test")
-
-    @unittest.mock.patch("subprocess.run")
-    def test_download_audio_no_file_created(self, mock_run):
-        """Test handling when subprocess succeeds but no file is created."""
-        mock_run.return_value.stdout = "[download] Some output without file info"
-        mock_run.return_value.returncode = 0
+    @unittest.mock.patch("yt_dlp.YoutubeDL")
+    def test_download_audio_no_file_created(self, mock_ydl_class):
+        """Test handling when download succeeds but no file is created."""
+        mock_ydl = mock_ydl_class.return_value.__enter__.return_value
+        mock_ydl.download.return_value = None
 
         result = self.service.download_audio("https://youtube.com/watch?v=test")
         assert result is None
 
-    def test_find_downloaded_file_with_destination_output(self):
-        """Test finding downloaded file from yt-dlp output with Destination."""
-        # Create test file
+    def test_postprocessor_hook(self):
+        """Test the postprocessor hook functionality."""
         test_file = self.service.download_directory / "test_audio.mp3"
         test_file.touch()
 
-        output = f"[download] Destination: {test_file}"
-        result = self.service._find_downloaded_file(output)
+        # Test hook with finished status
+        hook_data = {"status": "finished", "filepath": str(test_file)}
+        self.service._postprocessor_hook(hook_data)
 
-        assert result == test_file
+        assert self.service.downloaded_file_path == test_file
 
-    def test_find_downloaded_file_fallback_to_newest(self):
-        """Test fallback to finding newest mp3 file."""
+    def test_find_newest_mp3_file(self):
+        """Test finding the newest MP3 file in download directory."""
         # Create test files with different timestamps
         old_file = self.service.download_directory / "old_audio.mp3"
         new_file = self.service.download_directory / "new_audio.mp3"
 
         old_file.touch()
-        # Ensure different timestamps
-        import time
-
-        time.sleep(0.01)
+        time.sleep(0.01)  # Ensure different timestamps
         new_file.touch()
 
-        output = "[download] Some output without file info"
-        result = self.service._find_downloaded_file(output)
-
+        result = self.service._find_newest_mp3_file()
         assert result == new_file
 
-    def test_find_downloaded_file_no_files(self):
-        """Test finding downloaded file when no files exist."""
-        output = "[download] Some output without file info"
-        result = self.service._find_downloaded_file(output)
-
+    def test_find_newest_mp3_file_no_files(self):
+        """Test finding newest MP3 file when no files exist."""
+        result = self.service._find_newest_mp3_file()
         assert result is None
 
     def test_cleanup_file_success(self):
