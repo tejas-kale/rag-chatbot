@@ -7,8 +7,6 @@ import tempfile
 import unittest.mock
 from pathlib import Path
 
-import pytest
-
 from app.services.chromadb_service import ChromaDBService
 from app.services.data_ingestion_service import DataIngestionService
 from app.services.embedding_service import EmbeddingFactory
@@ -38,9 +36,7 @@ class TestWhisperDataIngestionIntegration:
         """Clean up test environment."""
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    @unittest.mock.patch(
-        "app.services.data_ingestion_service.YouTubeDownloaderService"
-    )
+    @unittest.mock.patch("app.services.data_ingestion_service.YouTubeDownloaderService")
     @unittest.mock.patch(
         "app.services.data_ingestion_service.WhisperTranscriptionService"
     )
@@ -57,8 +53,8 @@ class TestWhisperDataIngestionIntegration:
 
         # Configure YouTube downloader mock
         mock_youtube_service.is_youtube_url.return_value = True
-        mock_youtube_service.download_audio.return_value = (
-            str(Path(self.temp_dir) / "test_audio.mp3")
+        mock_youtube_service.download_audio.return_value = str(
+            Path(self.temp_dir) / "test_audio.mp3"
         )
         mock_youtube_service.cleanup_file.return_value = True
 
@@ -114,9 +110,7 @@ class TestWhisperDataIngestionIntegration:
         # Verify cleanup was called
         mock_youtube_service.cleanup_file.assert_called_once()
 
-    @unittest.mock.patch(
-        "app.services.data_ingestion_service.YouTubeDownloaderService"
-    )
+    @unittest.mock.patch("app.services.data_ingestion_service.YouTubeDownloaderService")
     @unittest.mock.patch(
         "app.services.data_ingestion_service.WhisperTranscriptionService"
     )
@@ -133,8 +127,8 @@ class TestWhisperDataIngestionIntegration:
 
         # Configure YouTube downloader mock
         mock_youtube_service.is_youtube_url.return_value = True
-        mock_youtube_service.download_audio.return_value = (
-            str(Path(self.temp_dir) / "test_audio.mp3")
+        mock_youtube_service.download_audio.return_value = str(
+            Path(self.temp_dir) / "test_audio.mp3"
         )
         mock_youtube_service.cleanup_file.return_value = True
 
@@ -178,16 +172,14 @@ class TestWhisperDataIngestionIntegration:
         assert metadatas[0]["source_type"] == "youtube"
         assert metadatas[0]["transcription_available"] is False
 
-    @unittest.mock.patch(
-        "app.services.data_ingestion_service.YouTubeDownloaderService"
-    )
+    @unittest.mock.patch("app.services.data_ingestion_service.YouTubeDownloaderService")
     @unittest.mock.patch(
         "app.services.data_ingestion_service.WhisperTranscriptionService"
     )
     def test_data_ingestion_service_initialization_with_whisper_params(
         self, mock_whisper_service_class, mock_youtube_service_class
     ):
-        """Test that DataIngestionService initializes WhisperTranscriptionService with correct parameters."""
+        """Test DataIngestionService initializes WhisperTranscriptionService."""
         # Create data ingestion service with custom whisper parameters
         service = DataIngestionService(
             chromadb_service=self.mock_chromadb,
