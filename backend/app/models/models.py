@@ -155,7 +155,8 @@ class Transcription(db.Model):
     video_duration = db.Column(db.Float, nullable=True)  # Duration in seconds
 
     # Transcription content
-    transcription_text = db.Column(Text, nullable=True)
+    transcription_text = db.Column(Text, nullable=True)  # Raw transcription
+    corrected_text = db.Column(Text, nullable=True)  # Corrected transcription
     confidence_score = db.Column(
         db.Float, nullable=True
     )  # Transcription confidence (0-1)

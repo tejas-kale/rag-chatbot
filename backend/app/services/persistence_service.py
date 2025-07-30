@@ -632,6 +632,7 @@ class PersistenceManager:
                 "original_filename",
                 "video_duration",
                 "transcription_text",
+                "corrected_text",
                 "confidence_score",
                 "transcription_engine",
                 "processing_duration",
