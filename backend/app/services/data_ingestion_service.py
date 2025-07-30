@@ -23,6 +23,7 @@ from app.services.embedding_service import (
     EmbeddingFactory,
 )
 from app.services.youtube_downloader_service import YouTubeDownloaderService
+from app.services.whisper_transcription_service import WhisperTranscriptionService
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ class DataIngestionService:
         embedding_factory: EmbeddingFactory,
         collection_name: str = "default_collection",
         youtube_download_dir: str = "downloads/audio",
+        whisper_executable: str = "whisper",
+        whisper_model: str = "base",
     ):
         """
         Initialize the DataIngestionService.
@@ -48,12 +51,18 @@ class DataIngestionService:
             embedding_factory: Instance of EmbeddingFactory.
             collection_name: Name of the ChromaDB collection to use.
             youtube_download_dir: Directory for YouTube audio downloads.
+            whisper_executable: Path to whisper.cpp executable.
+            whisper_model: Default whisper model for transcription.
         """
         self.chromadb_service = chromadb_service
         self.embedding_factory = embedding_factory
         self.collection_name = collection_name
         self.text_splitter = self._create_text_splitter()
         self.youtube_downloader = YouTubeDownloaderService(youtube_download_dir)
+        self.whisper_service = WhisperTranscriptionService(
+            whisper_executable=whisper_executable,
+            default_model=whisper_model,
+        )
 
     def _create_text_splitter(self) -> TextSplitter:
         """
@@ -297,11 +306,10 @@ class DataIngestionService:
         self, youtube_url: str, metadata: Optional[Dict] = None
     ) -> bool:
         """
-        Process a YouTube URL by downloading audio and storing metadata.
+        Process a YouTube URL by downloading audio and transcribing it.
 
-        Note: This method downloads the audio file but does not process the
-        audio content for embeddings. It stores metadata about the YouTube
-        video for retrieval purposes.
+        This method downloads the audio file and uses whisper.cpp to
+        transcribe the audio content for embedding and storage.
 
         Args:
             youtube_url: The YouTube URL to process.
@@ -322,7 +330,27 @@ class DataIngestionService:
                 logger.error(f"Failed to download audio from: {youtube_url}")
                 return False
 
-            # 3. Create metadata for the YouTube video
+            logger.info(f"Audio file downloaded: {downloaded_file_path}")
+
+            # 3. Transcribe audio using whisper.cpp
+            transcribed_text = None
+            try:
+                transcribed_text = self.whisper_service.transcribe_audio(
+                    downloaded_file_path
+                )
+                if transcribed_text:
+                    char_count = len(transcribed_text)
+                    logger.info(
+                        f"Successfully transcribed audio: {char_count} characters"
+                    )
+                else:
+                    logger.warning("Transcription returned no text")
+            except Exception as e:
+                logger.error(f"Audio transcription failed: {e}")
+                # Continue with processing even if transcription fails
+                transcribed_text = None
+
+            # 4. Create metadata for the YouTube video
             combined_metadata = metadata or {}
             combined_metadata.update(
                 {
@@ -330,21 +358,38 @@ class DataIngestionService:
                     "youtube_url": youtube_url,
                     "audio_file_path": downloaded_file_path,
                     "content_type": "audio/mp3",
+                    "transcription_available": transcribed_text is not None,
                 }
             )
 
-            # 4. For now, store just the URL and metadata as text content
-            # Future enhancement: transcribe audio to text for embedding
-            text_content = f"YouTube video: {youtube_url}"
+            # 5. Prepare text content for embedding
+            if transcribed_text:
+                # Use transcribed text as the main content
+                text_content = (
+                    f"YouTube video transcription from {youtube_url}:\n\n"
+                    f"{transcribed_text}"
+                )
+            else:
+                # Fallback to URL only if transcription fails
+                text_content = f"YouTube video: {youtube_url}"
+                logger.warning("Using URL only as no transcription was available")
 
-            # 5. Use common method for chunking, embedding, and storing
+            # 6. Use common method for chunking, embedding, and storing
             success = self._chunk_embed_and_store(
                 text_content, combined_metadata, f"YouTube content from {youtube_url}"
             )
 
+            # 7. Clean up audio file after processing
+            try:
+                if self.youtube_downloader.cleanup_file(downloaded_file_path):
+                    logger.info(f"Cleaned up audio file: {downloaded_file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up audio file: {e}")
+
             if success:
                 logger.info(f"Successfully processed YouTube URL: {youtube_url}")
-                logger.info(f"Audio file saved at: {downloaded_file_path}")
+                if transcribed_text:
+                    logger.info("Content includes audio transcription")
 
             return success
 
