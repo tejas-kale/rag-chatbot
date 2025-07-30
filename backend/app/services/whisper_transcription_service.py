@@ -129,7 +129,7 @@ class WhisperTranscriptionService:
                     encoding="utf-8"
                 ).strip()
                 logger.info(
-                    f"Successfully transcribed {audio_file_path} "
+                    f"Whisper.cpp transcription completed for {audio_file_path} "
                     f"({len(transcribed_text)} characters)"
                 )
                 return transcribed_text

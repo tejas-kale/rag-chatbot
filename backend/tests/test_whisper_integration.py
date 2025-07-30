@@ -99,7 +99,7 @@ class TestWhisperDataIngestionIntegration:
         documents = call_args.kwargs["documents"]
         assert len(documents) > 0
         assert "This is a test transcription" in documents[0]
-        assert "https://youtube.com/watch?v=test123" in documents[0]
+        # URL should not be in document content, only in metadata
 
         # Check metadata includes transcription info
         metadatas = call_args.kwargs["metadatas"]

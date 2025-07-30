@@ -341,7 +341,8 @@ class DataIngestionService:
                 if transcribed_text:
                     char_count = len(transcribed_text)
                     logger.info(
-                        f"Successfully transcribed audio: {char_count} characters"
+                        f"YouTube audio transcription completed: "
+                        f"{char_count} characters"
                     )
                 else:
                     logger.warning("Transcription returned no text")
@@ -365,10 +366,7 @@ class DataIngestionService:
             # 5. Prepare text content for embedding
             if transcribed_text:
                 # Use transcribed text as the main content
-                text_content = (
-                    f"YouTube video transcription from {youtube_url}:\n\n"
-                    f"{transcribed_text}"
-                )
+                text_content = transcribed_text
             else:
                 # Fallback to URL only if transcription fails
                 text_content = f"YouTube video: {youtube_url}"
