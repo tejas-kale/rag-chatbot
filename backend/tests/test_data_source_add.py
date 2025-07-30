@@ -226,3 +226,38 @@ class TestDataSourceAddEndpoint:
         data = json.loads(response.data)
         assert "error" in data
         assert "Task not found" in data["error"]
+
+    @patch("app.api.routes.data_ingestion_service.process_source")
+    def test_get_data_source_status_endpoint_positive(
+        self, mock_process_source, client
+    ):
+        """Test the status endpoint with a valid task ID."""
+        mock_process_source.return_value = True
+
+        # First, create a data source addition task
+        response = client.post(
+            "/api/data_source/add",
+            data=json.dumps({"type": "url", "value": "https://example.com"}),
+            content_type="application/json",
+        )
+        assert response.status_code == 202
+        data = json.loads(response.data)
+        task_id = data["task_id"]
+
+        # Give a brief moment for the task to be registered
+        time.sleep(0.1)
+
+        # Now test the status endpoint with the valid task ID
+        status_response = client.get(f"/api/data_source/status/{task_id}")
+        assert status_response.status_code == 200
+        status_data = json.loads(status_response.data)
+
+        # Check response structure
+        assert "task_id" in status_data
+        assert "status" in status_data
+        assert "source_type" in status_data
+
+        # Check response values
+        assert status_data["task_id"] == task_id
+        assert status_data["status"] in ["processing", "completed", "failed"]
+        assert status_data["source_type"] == "url"

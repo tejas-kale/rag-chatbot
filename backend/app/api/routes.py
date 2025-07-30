@@ -383,7 +383,7 @@ def _process_data_source_async(task_id, source_type, source_value):
 
         # For URL type, detect if it's a YouTube URL
         if source_type == "url":
-            if "youtube.com" in source_value or "youtu.be" in source_value:
+            if data_ingestion_service.youtube_downloader.is_youtube_url(source_value):
                 processing_type = "youtube"
             # else: keep as "url" for general web article processing
         elif source_type == "markdown":
