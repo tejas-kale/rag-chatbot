@@ -6,6 +6,8 @@ including chunking, embedding, and storing the data in ChromaDB.
 """
 
 import logging
+import os
+import time
 from typing import Dict, Optional, Union
 
 from langchain.text_splitter import (
@@ -24,6 +26,8 @@ from app.services.embedding_service import (
 )
 from app.services.youtube_downloader_service import YouTubeDownloaderService
 from app.services.whisper_transcription_service import WhisperTranscriptionService
+from app.services.text_correction_service import TextCorrectionService
+from app.services.persistence_service import PersistenceManager
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -63,6 +67,8 @@ class DataIngestionService:
             whisper_executable=whisper_executable,
             default_model=whisper_model,
         )
+        self.text_correction_service = TextCorrectionService()
+        self.persistence_manager = PersistenceManager()
 
     def _create_text_splitter(self) -> TextSplitter:
         """
@@ -310,6 +316,7 @@ class DataIngestionService:
 
         This method downloads the audio file and uses whisper.cpp to
         transcribe the audio content for embedding and storage.
+        Additionally, it saves the transcription data to the database.
 
         Args:
             youtube_url: The YouTube URL to process.
@@ -318,40 +325,146 @@ class DataIngestionService:
         Returns:
             True if processing was successful, False otherwise.
         """
+        transcription_record = None
+
         try:
             # 1. Validate YouTube URL
             if not self.youtube_downloader.is_youtube_url(youtube_url):
                 logger.error(f"Invalid YouTube URL: {youtube_url}")
                 return False
 
-            # 2. Download audio file
+            # 2. Create initial transcription record in database
+            # (if Flask context available)
+            try:
+                transcription_record = self.persistence_manager.create_transcription(
+                    youtube_url=youtube_url, user_settings_id=1  # Default user for now
+                )
+                if transcription_record:
+                    logger.info(
+                        f"Created transcription record ID: {transcription_record.id}"
+                    )
+                else:
+                    logger.warning(
+                        "Failed to create transcription record - "
+                        "continuing without database storage"
+                    )
+
+            except Exception as e:
+                logger.warning(
+                    f"Database error creating transcription record "
+                    f"(continuing without DB): {e}"
+                )
+                transcription_record = None
+
+            # 3. Download audio file
             downloaded_file_path = self.youtube_downloader.download_audio(youtube_url)
             if not downloaded_file_path:
                 logger.error(f"Failed to download audio from: {youtube_url}")
+                # Update transcription record with error status (if available)
+                if transcription_record:
+                    self.persistence_manager.update_transcription(
+                        transcription_record.id,
+                        status="error",
+                        error_message="Failed to download audio from YouTube",
+                    )
                 return False
 
             logger.info(f"Audio file downloaded: {downloaded_file_path}")
 
-            # 3. Transcribe audio using whisper.cpp
-            transcribed_text = None
+            # 4. Update transcription record with file info (if available)
+            if transcription_record:
+                try:
+                    filename = os.path.basename(downloaded_file_path)
+
+                    self.persistence_manager.update_transcription(
+                        transcription_record.id,
+                        original_filename=filename,
+                        status="processing",
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Could not update file info in transcription record: {e}"
+                    )
+
+            # 5. Transcribe audio using whisper.cpp
+            raw_transcription = None
+            corrected_transcription = None
+            transcription_start_time = None
+
             try:
-                transcribed_text = self.whisper_service.transcribe_audio(
+                transcription_start_time = time.time()
+
+                raw_transcription = self.whisper_service.transcribe_audio(
                     downloaded_file_path
                 )
-                if transcribed_text:
-                    char_count = len(transcribed_text)
+
+                processing_duration = time.time() - transcription_start_time
+
+                if raw_transcription:
+                    char_count = len(raw_transcription)
                     logger.info(
                         f"YouTube audio transcription completed: "
-                        f"{char_count} characters"
+                        f"{char_count} characters in {processing_duration:.2f}s"
                     )
+
+                    # 6. Apply text correction to raw transcription
+                    try:
+                        corrected_transcription = (
+                            self.text_correction_service.correct_transcription(
+                                raw_transcription
+                            )
+                        )
+                        logger.info("Text correction applied successfully")
+                    except Exception as e:
+                        logger.warning(
+                            f"Text correction failed, using raw transcription: {e}"
+                        )
+                        corrected_transcription = raw_transcription
+
+                    # 7. Update transcription record with results (if available)
+                    if transcription_record:
+                        self.persistence_manager.update_transcription(
+                            transcription_record.id,
+                            transcription_text=raw_transcription,
+                            corrected_text=corrected_transcription,
+                            transcription_engine="whisper",
+                            processing_duration=processing_duration,
+                            status="completed",
+                        )
                 else:
                     logger.warning("Transcription returned no text")
+                    if transcription_record:
+                        self.persistence_manager.update_transcription(
+                            transcription_record.id,
+                            status="error",
+                            error_message="Transcription returned no text",
+                            transcription_engine="whisper",
+                            processing_duration=(
+                                processing_duration
+                                if transcription_start_time
+                                else None
+                            ),
+                        )
+
             except Exception as e:
                 logger.error(f"Audio transcription failed: {e}")
+                processing_duration = (
+                    (time.time() - transcription_start_time)
+                    if transcription_start_time
+                    else None
+                )
+                if transcription_record:
+                    self.persistence_manager.update_transcription(
+                        transcription_record.id,
+                        status="error",
+                        error_message=f"Transcription failed: {str(e)}",
+                        transcription_engine="whisper",
+                        processing_duration=processing_duration,
+                    )
                 # Continue with processing even if transcription fails
-                transcribed_text = None
+                raw_transcription = None
 
-            # 4. Create metadata for the YouTube video
+            # 8. Create metadata for the YouTube video
             combined_metadata = metadata or {}
             combined_metadata.update(
                 {
@@ -359,25 +472,28 @@ class DataIngestionService:
                     "youtube_url": youtube_url,
                     "audio_file_path": downloaded_file_path,
                     "content_type": "audio/mp3",
-                    "transcription_available": transcribed_text is not None,
+                    "transcription_available": raw_transcription is not None,
+                    "transcription_record_id": (
+                        transcription_record.id if transcription_record else None
+                    ),
                 }
             )
 
-            # 5. Prepare text content for embedding
-            if transcribed_text:
-                # Use transcribed text as the main content
-                text_content = transcribed_text
+            # 9. Prepare text content for embedding
+            if corrected_transcription or raw_transcription:
+                # Use corrected text for embeddings if available, otherwise raw
+                text_content = corrected_transcription or raw_transcription
             else:
                 # Fallback to URL only if transcription fails
                 text_content = f"YouTube video: {youtube_url}"
                 logger.warning("Using URL only as no transcription was available")
 
-            # 6. Use common method for chunking, embedding, and storing
+            # 10. Use common method for chunking, embedding, and storing
             success = self._chunk_embed_and_store(
                 text_content, combined_metadata, f"YouTube content from {youtube_url}"
             )
 
-            # 7. Clean up audio file after processing
+            # 11. Clean up audio file after processing
             try:
                 if self.youtube_downloader.cleanup_file(downloaded_file_path):
                     logger.info(f"Cleaned up audio file: {downloaded_file_path}")
@@ -386,8 +502,13 @@ class DataIngestionService:
 
             if success:
                 logger.info(f"Successfully processed YouTube URL: {youtube_url}")
-                if transcribed_text:
+                if raw_transcription:
                     logger.info("Content includes audio transcription")
+                    if transcription_record:
+                        logger.info(
+                            f"Transcription stored in database with record ID: "
+                            f"{transcription_record.id}"
+                        )
 
             return success
 
@@ -395,4 +516,16 @@ class DataIngestionService:
             logger.error(
                 f"Error processing YouTube URL {youtube_url}: {e}", exc_info=True
             )
+            # Update transcription record with error if it exists
+            if transcription_record:
+                try:
+                    self.persistence_manager.update_transcription(
+                        transcription_record.id,
+                        status="error",
+                        error_message=f"Processing failed: {str(e)}",
+                    )
+                except Exception as db_error:
+                    logger.error(
+                        f"Failed to update transcription record with error: {db_error}"
+                    )
             return False
